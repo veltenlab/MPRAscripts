@@ -1,0 +1,328 @@
+---
+title: "220908_HSC_MPRA_EoBaso_NS2000"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+```
+
+# Overview of the libraries
+
+Reands in EDNA1 - 89,577,663
+Reands in EDNA2 - 61,396,150
+Reands in ERNA1 - 241,858,134
+Reands in ERNA2 - 283,802,910
+
+Ratio Replicate1: 2.70
+Ratio Replicate2: 4.62
+
+
+## Processing pipeline
+
+My pipeline only reports barcodes that have a CRS assignment. It then counts unique UMIs and runs error correction on the UMIs. 
+
+```{r packages}
+require(plyr)
+require(ggplot2)
+require(LSD)
+require(reshape2)
+require(tidyr)
+```
+
+```{r readdata, fig.width=4.5,fig.height=4.5}
+DNA1 <- read.csv("~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/3EDNA1.csv")
+DNA2 <- read.csv("~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/3EDNA2.csv")
+RNA1 <- read.csv("~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/3ERNA1.csv")
+RNA2 <- read.csv("~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/3ERNA2.csv")
+```
+
+
+
+```{r}
+summary(DNA1)
+summary(DNA2)
+summary(RNA1)
+summary(RNA2)
+```
+
+The mean/median UMIs/Reads per sample in the new screen are lower in comparison to the K562 screen
+In comparison we 
+
+```{r UMIvsREAD, fig.width=4.5,fig.height=4.5}
+toplot<-sample(1:nrow(DNA1), 50000)
+heatscatter(log10(DNA1$UMI[toplot]+1),log10( DNA1$READS[toplot]+1), main = "DNA1")
+
+toplot<-sample(1:nrow(DNA2), 50000)
+heatscatter(log10(DNA2$UMI[toplot]+1),log10( DNA2$READS[toplot]+1), main = "DNA2")
+
+toplot<-sample(1:nrow(RNA1), 50000)
+heatscatter(log10(RNA1$UMI[toplot]+1),log10( RNA1$READS[toplot]+1), main = "RNA1")
+
+toplot<-sample(1:nrow(RNA2), 50000)
+heatscatter(log10(RNA2$UMI[toplot]+1),log10( RNA2$READS[toplot]+1), main = "RNA2")
+```
+
+## Sequencing depth
+
+```{r}
+Experiment1 <- merge(DNA1, RNA1, by = c("BARCODE","CRS"), suffixes = c(".dna",".rna"), all = T)
+for (i in 3:6) Experiment1[is.na(Experiment1[,i]),i] <- 0
+Experiment2 <- merge(DNA2, RNA2, by = c("BARCODE","CRS"), suffixes = c(".dna",".rna"), all = T)
+for (i in 3:6) Experiment2[is.na(Experiment2[,i]),i] <- 0
+
+rm(DNA1, DNA2, RNA1, RNA2)
+gc()
+
+Experiment1$norm <- Experiment1$UMI.rna / Experiment1$UMI.dna
+Experiment2$norm <- Experiment2$UMI.rna / Experiment2$UMI.dna
+
+all <- merge(Experiment1, Experiment2, by = c("BARCODE","CRS"), suffixes = c(".1",".2"), all=T)
+```
+
+```{r}
+length( which( all$UMI.rna.1 == 0 | all$UMI.rna.2 == 0)) #1364579
+
+length( which(all$UMI.dna.1 == 0 & all$UMI.rna.1> 0)) #1364579
+length( which(all$UMI.dna.1 == 0 & all$UMI.rna.1> 0 | all$UMI.dna.2 == 0 & all$UMI.rna.2> 0)) #2423676
+length( which(all$UMI.dna.2 == 0 & all$UMI.rna.2> 0)) #1364579
+```
+
+Lots of our barcodes are not covered in the DNA parts due to the low sequencing depth!
+Right now we have 3.2 million Barcodes in the joined file, but there are only are 400,000 Barcodes which are covered in Replicate 1 & 2 for the DNA samples respectively.
+
+```{r}
+ all.filtered <- all %>%
+   dplyr::filter(UMI.dna.1 != 0 & UMI.dna.2 != 0)
+
+cor(x = log10(all.filtered$UMI.rna.1+1),y = log10(all.filtered$UMI.rna.2+1), method = "pearson" )
+cor(x = all.filtered$UMI.rna.1, y = all.filtered$UMI.rna.2, method = "pearson" )
+
+cor(x = log10(all.filtered$READS.rna.1+1),y = log10(all.filtered$READS.rna.2+1), method = "pearson" )
+cor(x = all.filtered$READS.rna.1, y = all.filtered$READS.rna.2, method = "pearson" )
+
+cor(x = log10(all.filtered$UMI.dna.1+1),y = log10(all.filtered$UMI.dna.2+1), method = "pearson" )
+cor(x = all.filtered$UMI.dna.1, y = all.filtered$UMI.dna.2, method = "pearson" )
+
+cor(x = log10(all.filtered$READS.dna.1+1),y = log10(all.filtered$READS.dna.2+1), method = "pearson" )
+cor(x = all.filtered$READS.dna.1, y = all.filtered$READS.dna.2, method = "pearson" )
+
+cor(x = log10(all.filtered$UMI.dna.1+1),y = log10(all.filtered$UMI.rna.1+1), method = "pearson" )
+cor(x = all.filtered$UMI.dna.1, y = all.filtered$UMI.rna.1, method = "pearson" )
+```
+
+
+Did we sequence sufficiently deep? Barcodes should be covered in both the RNA and the DNA experiment
+
+```{r}
+ all.filtered <- all %>%
+   dplyr::filter(UMI.dna.1 != 0 | UMI.dna.2 != 0)
+```
+
+```{r dnavsrna, fig.width=4.5, fig.height=4.5}
+toplot<-sample(1:nrow(all.filtered), 100000)
+
+heatscatter(log10(all.filtered$UMI.dna.1[toplot]+1),log10( all.filtered$UMI.rna.1[toplot]+1), main = "DNA vs RNA Exp 1", cor=T, method = "pearson")
+heatscatter(log10(all.filtered$UMI.rna.1[toplot]+1),log10( all.filtered$UMI.rna.2[toplot]+1), main = "RNA vs RNA", cor=T, method = "pearson")
+
+heatscatter(log10(all.filtered$UMI.dna.1[toplot]+1),log10( all.filtered$UMI.dna.2[toplot]+1), main = "DNA vs DNA", cor=T, method = "pearson")
+
+```
+
+```{r}
+save(all, all.filtered, file = "~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/220907_BC.all.and.all.filtered.rda")
+```
+
+```{r eval=FALSE, include=FALSE}
+load("~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/220907_BC.all.and.all.filtered.rda")
+```
+
+
+The RNA-seq libraries might not be sequenced sufficiently: The same barcodes are presented to the same level, but different barcodes are expressed? May also reflect stochasticity? What does the UMI coverage tell us?
+
+```{r umicoverage, fig.width=8, fig.height=6}
+umis.files <- list.files("~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/",pattern = "umistat.txt", full.names = T)
+umi.stat <- lapply(umis.files, read.csv, header=F)
+names(umi.stat) <- basename(umis.files)
+umi.stat <- lapply( basename(umis.files), function(x) {out <- umi.stat[[x]]; out$experiment <- x; return(out)})
+umi.stat <- do.call(rbind, umi.stat)
+qplot(x = V1, y = V2, data= umi.stat, geom="col") + facet_wrap(~ experiment,scales="free") + scale_x_continuous(limits = c(0,20), oob = scales::squish)
+```
+
+Total reads:
+
+```{r readstat}
+readsum <-ddply(umi.stat,"experiment",summarise, reads = sum(V1*V2), umis = sum(V2) )
+print(readsum)
+
+```
+
+We barely have any reads left after th associations
+Around 50 % of all reads do not have any association in this setup and are getting discarded
+
+3EDNA1.umistat.txt	44276977	7687026		
+3EDNA2.umistat.txt	30672327	7740850		
+3ERNA1.umistat.txt	119585667	24895773		
+3ERNA2.umistat.txt	140800574	28507817	
+
+#Reads from the sequencer for this NextSeq 2000 Run
+EDNA1	89577663
+EDNA2	61396150
+ERNA1	241858134
+ERNA2	283802910
+
+```{r}
+#Recovered versus sequences
+
+#DNA1
+44276977/89577663
+
+#DNA2
+30672327/61396150
+
+#RNA1
+119585667/241858134
+
+#RNA2
+140800574/283802910
+
+```
+
+## Normalize at CRS level
+
+So we normalize at the level of the CRSs instead (Klein et al did the same)
+
+```{r summarise.CRS}
+Experiment1.filtered <- subset(Experiment1 , UMI.dna > 0)
+Experiment2.filtered  <- subset(Experiment2 , UMI.dna > 0)
+
+#now working with the filtered barcodes from the nextseq step
+BC_CRS <- read.csv("~/cluster_mount/lvelten/Analysis/SCG4SYN/LibA/CRS_BC_ass/myPipeline/outNextseq/mapped.filtered.csv")
+#the next line should not make a difference (used for unfiltered barcodes from miseq mapping)
+selected_barcodes <- subset(BC_CRS, MEANMATCHES >= 290 & DEVIANTREADS / (READS + DEVIANTREADS) < 0.2)
+
+Experiment1.filtered <- subset(Experiment1.filtered, BARCODE %in% selected_barcodes$BARCODE) 
+Experiment2.filtered <- subset(Experiment2.filtered, BARCODE %in% selected_barcodes$BARCODE)
+
+#We then summed up the counts of all barcodes contributing to each element 
+CRS1 <- ddply(Experiment1.filtered, "CRS", summarise, RNA = sum(UMI.rna), DNA = sum(UMI.dna))
+CRS2 <- ddply(Experiment2.filtered, "CRS", summarise, RNA = sum(UMI.rna), DNA = sum(UMI.dna))
+CRS1$RNA.norm <- CRS1$RNA / (sum(CRS1$RNA) / 1e6)
+CRS1$DNA.norm <- CRS1$DNA / (sum(CRS1$DNA) / 1e6)
+CRS2$RNA.norm <- CRS2$RNA / (sum(CRS2$RNA) / 1e6)
+CRS2$DNA.norm <- CRS2$DNA / (sum(CRS2$DNA) / 1e6)
+#and computed the normalized counts as the counts per million (cpm) sequenced reads of that library. Finally, we computed enhancer activity scores as log2 (RNA cpm/DNA cpm). To account for the differential scale among replicates of each experiment, we divided the RNA/DNA ratios by the median across the replicate value before averaging them.
+
+CRS1$norm <- log2(CRS1$RNA.norm / CRS1$DNA.norm)
+CRS2$norm <- log2(CRS2$RNA.norm / CRS2$DNA.norm)
+
+CRS.all <- merge(CRS1, CRS2, by = "CRS", suffixes = c(".1",".2"), all=T)
+```
+
+```{r reproduc.plots.crs, fig.width=4.5, fig.height=4.5}
+heatscatter(CRS.all$norm.1,CRS.all$norm.2, main = "normalized", cor=T, method = "pearson")
+heatscatter(log2(CRS.all$RNA.1+1),log2( CRS.all$RNA.2+1), main = "normalized", cor=T, method = "pearson")
+heatscatter(log2(CRS.all$DNA.1+1),log2( CRS.all$DNA.2+1), main = "normalized", cor=T, method = "pearson")
+heatscatter(log10(CRS.all$RNA.1+1),log10( CRS.all$DNA.1+1), main = "normalized", cor=T, method = "pearson")
+```
+
+Only 1125 GREs have a DNA count over 1000!
+If we set the filter to 100, still 7980 GREs surpase the filter for this run.
+
+```{r}
+CRS.all.filtered <- subset(CRS.all, DNA.1 > 100 &DNA.2 > 100)
+
+heatscatter(CRS.all.filtered$norm.1,CRS.all.filtered$norm.2, main = "normalized", cor=T, method = "pearson")
+heatscatter(log2(CRS.all.filtered$RNA.1+1),log2(CRS.all.filtered$RNA.2+1), main = "normalized", cor=T, method = "pearson")
+heatscatter(log2(CRS.all.filtered$DNA.1+1),log2(CRS.all.filtered$DNA.2+1), main = "normalized", cor=T, method = "pearson")
+heatscatter(log10(CRS.all.filtered$RNA.1+1),log10(CRS.all.filtered$DNA.1+1), main = "normalized", cor=T, method = "pearson")
+```
+
+Just as a quick check, how is the coverage of the CRS in the DNA library related to the coverage in the BC_CRS association expeirment?
+
+```{r bccrsvscount, fig.width=4.5, fig.height=4.5}
+CRS.complete <- merge(CRS1, CRS2, by = "CRS", suffixes = c(".1",".2"), all=T)
+BCCRS.byCRS <- ddply(BC_CRS, "CRS", summarise, nBC = length(READS), reads.BC = sum(READS))
+CRS.complete <- merge(CRS.complete, BCCRS.byCRS)
+heatscatter(log10(CRS.complete$reads.BC),log10(CRS.complete$DNA.norm.1), main = "normalized", cor=T, method = "pearson")
+```
+
+
+```{r}
+CRS.all$TF <- gsub(".*tf_([^_]+)_.+","\\1",CRS.all$CRS)
+CRS.all$nrepeats <- gsub(".*nr_([^_]+)_.+","\\1",CRS.all$CRS)
+CRS.all$affinity <- gsub(".*aff_([^_]+)_.+","\\1",CRS.all$CRS)
+
+CRS.all$affinity <- gsub("NULL", "c-0-0-" , CRS.all$affinity)
+
+CRS.all$orientation <- gsub(".*ori_([^_]+)_.+","\\1",CRS.all$CRS)
+CRS.all$orientation <- ifelse(CRS.all$orientation %in% "fwd", "fwd", ifelse(CRS.all$orientation %in% "rev", "rev", "tandem"))
+
+plf <- melt(CRS.all[CRS.all$DNA.1 > 100 & CRS.all$DNA.2 > 100,c("CRS","TF","nrepeats","affinity","orientation","norm.1","norm.2"),], id.vars = c("CRS","TF", "nrepeats","affinity","orientation"))
+plf$nrepeats <- as.numeric(plf$nrepeats)
+```
+
+```{r boxplot.tfs, fig.width=8, fig.height=8}
+qplot(x = TF, y = value, data=plf, color = variable, geom="boxplot") + theme(axis.text.x = element_text(angle=90))
+```
+
+```{r, fig.width=8, fig.height=8}
+ggplot(aes(x = reorder(TF, value), y = value, color = variable), data=plf) + 
+  geom_boxplot(aes(color = variable)) + 
+  scale_color_discrete(name = "Replicate ", labels = c("1", "2")) + 
+  geom_hline(aes(yintercept = 0), linetype = "dashed") + 
+  ylab("Normalized RNA/DNA ratio") + xlab("Transcription factor") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=90, hjust = 1, vjust = 0.5))
+
+ggplot(aes(x = nrepeats, y = value, color = variable), data=plf) + 
+  facet_wrap(~ TF) + 
+  geom_smooth(aes(color = variable)) + 
+  scale_color_discrete(name = "Replicate ", labels = c("1", "2")) + 
+  geom_hline(yintercept = 0, linetype = "dashed") + 
+  ylab("Normalized RNA/DNA ratio") + xlab("Number of repeats") + 
+  theme_minimal() 
+
+ggplot(aes(x = affinity, y = value), data=plf) + 
+  facet_wrap(~ TF) + geom_boxplot(aes(color = variable)) + 
+  scale_color_discrete(name = "Replicate ", labels = c("1", "2")) + 
+  geom_hline(yintercept = 0, linetype = "dashed") + 
+  ylab("Normalized RNA/DNA ratio") + xlab("Binding site affinity") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 6, angle = 90))
+
+ggplot(aes(x = orientation, y = value), data=plf) + 
+  facet_wrap(~ TF) + 
+  geom_boxplot(aes(color = variable)) + 
+  scale_color_discrete(name = "Replicate ", labels = c("1", "2")) + 
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle=90)) + 
+  ylab("Normalized RNA/DNA ratio") + xlab("Orientation of the motif") 
+
+```
+
+
+```{r}
+save(CRS.all, CRS.all.filtered, file = "~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/220907_CRS.summaries.rda")
+```
+
+```{r}
+load("~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220906_EoBaso/220907_CRS.summaries.rda")
+```
+
+
+One thing to check instead of a true neg. control: All the different barcodes mapping to *, how do they behave?
+
+```{r nonesense.bc, fig.width=6.5, fig.height=4.5}
+qplot(x = CRS == "*", y = log10(norm.1+1), data = all, geom="boxplot")
+qplot(x = CRS == "*", y = log10(norm.2+1), data = all, geom="boxplot")
+```
+
+Not significant: p = `r round(wilcox.test(all$norm.1[all$CRS=="*"],all$norm.1[all$CRS!="*"])$p.value, digits=3)` , `r round(wilcox.test(all$norm.2[all$CRS=="*"],all$norm.2[all$CRS!="*"])$p.value, digits=3)`
+
+```{r}
+round(wilcox.test(all$norm.1[all$CRS=="*"],all$norm.1[all$CRS!="*"])$p.value, digits=3)
+round(wilcox.test(all$norm.2[all$CRS=="*"],all$norm.2[all$CRS!="*"])$p.value, digits=3)
+```
+

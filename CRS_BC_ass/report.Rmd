@@ -1,0 +1,143 @@
+---
+title: "CRS Barcode mapping"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Basic statistics
+
+
+```{r read_data, fing.width=6, fig.height=4.5}
+.libPaths(c("/home/lars/RLibs/R4.1.2Seurat/", "/home/lars/RLibs/R4.1.2Bioconductor/"))
+require(plyr)
+require(ggplot2)
+mapped <- read.csv(gzfile("/users/lvelten/lvelten/Analysis/SCG4SYN/LibA/CRS_BC_ass/myPipeline/outNextseq/mapped.csv.gz"))
+filtered <- mapped
+hist(log10(filtered$READS))
+```
+
+There are `r nrow(filtered)` barcodes of which `r sum(filtered$READS >= 5) ` with at least 5 reads. In total `r sum(filtered$READS)` reads support a valid CRS-barcode match and `r sum(filtered$DEVIANTREADS)` reads support a secondary CRS-barcode match
+
+Sequencing is not saturated - more reads give more barcodes.
+
+```{r filter, fing.width=6, fig.height=4.5}
+#apply filters
+filtered <- mapped
+ filtered <- subset(filtered, READS > 5)
+filtered <- subset(filtered, READS > DEVIANTREADS * 5 & CRS != "*") #apply filters: reads > deviant rerads * 5, matches a CRS
+```
+
+How about alignment quality / synthesis errors in the CRS library?
+
+```{r seqstat1, fing.width=6, fig.height=4.5}
+qplot(x = MEANMATCHES, data = filtered, geom="histogram") + scale_x_continuous(limits=c(250,300), oob = scales::squish)
+```
+
+The vast majority of sequences does not have any mismatches. In terms of volume, `r round(100*sum(filtered$READS[filtered$MEANMATCHES>290])/sum(filtered$READS),digits=2)`% of the library has a maximum of 2 mismatches. We could check this against the synthesis quality that twist claims. What does QC_Failure mean in the design file / CRS name? There is no real effect of QC_Failure on the matches.
+
+```{r filter2, fing.width=6, fig.height=4.5}
+#apply filters
+filtered <- subset(filtered, MEANMATCHES >= 290)
+#write.csv(filtered, file = "outNextseq/mapped.filtered.csv",row.names=F,quote=F)
+```
+
+After this there are now `r nrow(filtered)` barcodes-CRS pairs
+
+## CRS statistics
+
+```{r crscount, fing.width=6, fig.height=4.5}
+#remvoe the QC_Failure__ flag
+filtered$CRS <- gsub("QC_Failure___", "", filtered$CRS)
+
+crs <- ddply(filtered, "CRS", summarise, n = length(BARCODE), reads = sum(READS))
+saveRDS(crs, file = "crs.rds" )
+```
+
+`r nrow(crs)` out of 10260 CRS are represented in the library. How many barcodes:
+
+```{r crshist, fing.width=6, fig.height=4.5}
+#apply filters
+qplot(x = n, geom="histogram", data=crs) + xlab("Number of barcodes")
+
+print(summary(crs$n))
+```
+The library is extremely complex, well done!
+
+```{r crsreadhist, fing.width=6, fig.height=4.5}
+#apply filters
+crs$rep <- with(crs, reads / sum(reads))
+crs$nrep <- with(crs, rep/quantile(rep, 0.05))
+qplot(x = 1:nrow(crs), y =nrep , data=crs[order(crs$rep),]) + xlab("Representation of the CRS in the library") + 
+  geom_vline(xintercept = c(0.05, 0.95) * nrow(crs)) + geom_hline(yintercept = quantile(crs$nrep, 0.95)) + scale_y_log10(breaks = quantile(crs$nrep, c(0,0.05,0.95,1)), labels = round(quantile(crs$nrep, c(0,0.05,0.95,1)), digits=2))
+qplot(x = rep, geom="histogram", data=crs) + xlab("Representation of the CRS in the library")
+
+print(summary(crs$reads/sum(crs$reads)))
+```
+Also the representation of the different CRS (in terms of volume) is not so even even: 90% of the library are represented with at least  `r round(100*quantile(crs$reads/sum(crs$reads),0.1),digits=5)` % , that is, `r round(100*quantile(crs$reads/sum(crs$reads),0.1)/max(crs$reads/sum(crs$reads)), digits=2)` % of the most abundantly represented CRS and `r round(100*quantile(crs$reads/sum(crs$reads),0.1)/(1/10000), digits=2)`% of what it would be in perfect world.
+
+```{r crsreadbox, fing.width=8, fig.height=4.5}
+crs$tf <- gsub("__.+","",crs$CRS)
+qplot(x = tf , y = reads / sum(reads), geom="boxplot", data=crs) + ylab("Representation of the CRS in the library") + theme(axis.text.x = element_text(angle = 90))
+```
+
+Analyze if there is a relationship between coverage and GC content
+
+```{r crsreadseq, fig.width=8, fig.height=4.5}
+require(stringr)
+require(LSD)
+load("/users/lvelten/lvelten/Analysis/SCG4SYN/LibA/deep/220316_Library1_names.RData")
+crs$seq <- Library1_renamed[as.character(crs$CRS)]
+crs$gc <- str_count(as.character(crs$seq), "[gc]") / nchar(crs$seq)
+crs$gc.bin <- infotheo::discretize(crs$gc, nbins = 20)$X
+heatscatter(x = crs$gc , y = crs$reads / sum(crs$reads))
+qplot(x = as.factor(gc.bin) , y = reads / sum(reads), geom="boxplot", data=crs) + ylab("Representation of the CRS in the library")
+
+```
+
+Or in general with sequence
+
+```{r crsseqmodel, fig.width=8, fig.height=4.5}
+
+bases <- c("a","c","g","t")
+dimers <- sapply(bases, function(a) {
+  sapply(bases, function(b) {
+    paste0(a,b)
+  })
+})
+get_kmer <- function(k) {
+  if (k==1) return(bases)
+  unlist(lapply(bases, function(a) {
+  sapply(get_kmer(k-1), function(b) {
+    paste0(a,b)
+  })
+}))
+}
+kmers <- unname(unlist(lapply(1:5,get_kmer)))
+
+kmer.content <- sapply(kmers, function(x) str_count(crs$seq,x) / nchar(crs$seq))
+dimer.content <- sapply(dimers, function(x) str_count(crs$seq,x) / nchar(crs$seq))
+base.content <- sapply(bases, function(x) str_count(crs$seq,x) / nchar(crs$seq))
+df <- cbind(dimer.content, base.content, coverage = crs$rep)
+m <- lm(coverage ~ . , data = as.data.frame(df))
+print(summary(m))
+crs$seq.model <- predict(m , as.data.frame(df))
+heatscatter(x = crs$seq.model , y = crs$reads / sum(crs$reads))
+
+
+```
+
+Model including up to 6 mers, and lasso:
+
+```{r crskmer, fig.width=8, fig.height=4.5}
+require(glmnet)
+net <- cv.glmnet(kmer.content, y = crs$rep)
+feat <- predict(net, s = "lambda.min", type = "coefficients")
+crs$lasso.model <- predict(net,s="lambda.min",newx = kmer.content )[,1]
+heatscatter(x = crs$lasso.model , y = crs$reads / sum(crs$reads))
+print(feat[feat[,1]!=0,])
+```
+
+Suggests that maybe we can gain from some PCR optimization (since the representation is sequence dependent) BUT it's bot a very strong effect and not related to GC content, so probably by increasing the coverage in E. Coli we can gain more.
