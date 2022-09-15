@@ -31,4 +31,4 @@ REV="$FASTQDIR/$DNA1""_R3_""$lane";
 UMI="$FASTQDIR/$DNA1""_R2_""$lane";
 echo $EXP
 echo $DNA1
-perl count_BC.pl $UMI $FWD $REV $ASSIGNMENT $OUT/$EXP.csv $OUT/$EXP.umistat.txt $OUT/$EXP.nonmapped.csv.gz 2> $OUT/$EXP.log
+perl count_BC.pl $UMI $FWD $REV $ASSIGNMENT $OUT/$EXP.csv.gz $OUT/$EXP.umistat.txt $OUT/$EXP.nonmapped.csv.gz 2> $OUT/$EXP.log

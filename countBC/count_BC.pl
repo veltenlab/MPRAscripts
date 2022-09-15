@@ -17,7 +17,10 @@ use List::Util qw(min max sum);
 
 my ($umi, $fwd, $rev, $assignments, $outfile, $statfile, $nonmapped) = @ARGV;
 
-my $MINREADUMI = 2; #the CONFIDENTUMI column in the output now only reports UMIs with at least this many reads. The UMI column still reports all UMIs
+my @MINREADUMI = (1,2,5,10); #report UMIs with at least this many reads
+my $MAXREADUMI = 10000000; #set to a high value in order to not filter
+my $downsample = 0; #set to 1 if downsampling of reads should be performed
+my $dsto = 0.5; #fraction of reads to downsample
 
 ###########################################
 ###  Read in  filtered assignments.    ####
@@ -83,7 +86,8 @@ while ($umiline = <UMI>) {
   next unless ($i == 2); #skip read name, quality string etc. Only care about the actual read
   $counter++;
   warn "$counter\n" if ($counter % 1000000 == 0);
-  
+  #downsampling
+  next if (rand() > $dsto and $downsample);
   #check if fwd BC read = rev BC read
   $fwdline = substr $fwdline, 0, 15;
   $revline = substr rc($revline), 1,15;
@@ -170,24 +174,35 @@ while ( my ($barcode, $umis) = each (%BC_UMI)) {
 ###########################################
 ###           print output to csv      ####
 ###########################################
-open(OUT, ">$outfile");
-print OUT "BARCODE,CRS,UMI,READS,CONFIDENTUMIS\n";
+open(OUT, "|gzip -c >$outfile");
+print OUT "BARCODE,CRS,UMI,READS";
+foreach my $thresh (@MINREADUMI) {
+  print OUT ",UMI$thresh";
+}
+print OUT "\n";
 
 my %reads_per_umi; #a histogram: How often are there x reads per UMI?
 while ( my ($barcode, $umis) = each (%BC_UMI_fixed)) {
   my @umi_reads = values %{$umis};
   my $numi = scalar(@umi_reads);
   my $nreads = 0;
-  my $numioneread =0;
-  my $numimanyread=0;
-  my $maxumiread=max(@umi_reads);
+  my @numinread = (0) x @MINREADUMI;
   foreach my $nn (@umi_reads) {
     $reads_per_umi{$nn}++;
     $nreads += $nn;
-    $numioneread++ if ($nn == 1);
-    $numimanyread++ if ($nn >= $MINREADUMI);
+    for (my $ii = 0; $ii <= $#MINREADUMI; $ii++) {
+      $numinread[$ii]++ if ($nn >= $MINREADUMI[$ii] and $nn <= $MAXREADUMI);
+    }
+    #$numioneread++ if ($nn == 1);
+    #$numimanyread++ if ($nn >= $MINREADUMI);
+    #$numifiveread++ if ($nn >= 5);
+    #$numitenread++ if ($nn >= 10);
   }
-  print OUT "$barcode,$BC_CRS{$barcode},$numi,$nreads,$numimanyread\n";
+  print OUT "$barcode,$BC_CRS{$barcode},$numi,$nreads";
+  foreach my $val (@numinread) {
+    print OUT ",$val";
+  }
+  print OUT "\n";
 }
 
 close(OUT);
