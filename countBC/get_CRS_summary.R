@@ -12,7 +12,7 @@
 #outdir = "out", use.col = "UMI5", return_report = T, 
 #dna.crs.is.umi = T, crs_filter = 20)
 
-function(f, run_id, Experiments = NULL,
+get_CRS_summary <- function(f, run_id, Experiments = NULL,
          use.col = "UMI5", #the column in the PERL pipeline output to use (e.g. UMI5: UMIs with >=5 reads)
          plot =T, #create pllots on the way in the directory specified as outdir
          outdir = "processed", 
