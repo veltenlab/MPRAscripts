@@ -17,7 +17,7 @@ use List::Util qw(min max sum);
 
 my ($umi, $fwd, $rev, $assignments, $outfile, $statfile, $nonmapped) = @ARGV;
 
-my @MINREADUMI = (1,2,5,10); #report UMIs with at least this many reads
+my @MINREADUMI = (1..10); #report UMIs with at least this many reads
 my $MAXREADUMI = 10000000; #set to a high value in order to not filter
 my $downsample = 0; #set to 1 if downsampling of reads should be performed
 my $dsto = 0.5; #fraction of reads to downsample
@@ -28,7 +28,12 @@ my $dsto = 0.5; #fraction of reads to downsample
 
 my %BC_CRS;
 
-open(ASSI, "<$assignments");
+if ($assignments =~ /gz$/) {
+      open(ASSI, "zcat $assignments|");
+  } else {
+      open(ASSI, "<$assignments");
+  }
+
 my $line = <ASSI>; #skip header
 while($line = <ASSI>) {
   chomp $line;

@@ -1,5 +1,3 @@
-#todo: look at base wise quality scores and in general go through this pipeline again...
-
 use strict;
 use warnings;
 use lib "/users/lvelten/lvelten/Software/perl/lib/perl5/x86_64-linux-thread-multi/";
@@ -8,7 +6,8 @@ use List::Util qw(min max sum);
 
 my ($bc, $bam, $outfile) = @ARGV;
 
-
+my $time = CORE::localtime;
+warn "Started the job at: $time\n";
 
 #################################################
 ####      Mapping barcodes and alignments    ####
@@ -98,6 +97,9 @@ while ($bcline = <BC>) {
 close(BC);
 close(BAM);
 
+$time = CORE::localtime;
+warn "$time: Completed reading BAM file\n";
+
 #############################################
 ####       Clean up multiple assignments#####
 #############################################
@@ -119,6 +121,10 @@ while ( my ($barcode, $crs) = each (%BC_CRS_raw)) {
   
 }
 
+$time = CORE::localtime;
+warn "$time: Completed creating BC_CRS\n";
+
+
 #############################################
 ####        Run barcode correction      #####
 #############################################
@@ -136,10 +142,31 @@ while ( my ($barcode, $crs) = each (%BC_CRS)) {
   
 }
 
+$time = CORE::localtime;
+warn "$time: Completed creating CRS_BC\n";
+
 my %BC_CRS_fixed;
+my $nstep;
+my $ncrs = scalar keys %CRS_BC;
+
 while (my ($crs, $barcodes) = each(%CRS_BC)) {
+
+  ######
+  $nstep++;
   my @BARCODES = @{$barcodes}; #all barcodes mapping to a given CRS
-  @BARCODES = sort { $BC_CRS{$a}->[2] <=> $BC_CRS{$b}->[2] } @BARCODES;  #sort barcodes by number of raeds
+#print information
+  my $totreads = sum(map { $BC_CRS{$_}->[2] } @BARCODES);
+  $time = CORE::localtime;
+  warn "$time: Correcting barcodes for CRS $crs with " .  scalar(@BARCODES) . " barcodes and $totreads reads, $nstep of $ncrs\n";
+
+#filter
+  if (scalar(@BARCODES) > 1000) { #for all CRS with more than 1000 non error corrected barcodes
+  @BARCODES = grep {$BC_CRS{$_}->[2] > 1} @BARCODES; #simply through out all barcodes with 1 or 2 reads
+  warn "for $crs removed barcodes with less than 2 reads\n";
+  }
+
+#SortBC
+  @BARCODES = sort { $BC_CRS{$a}->[2] <=> $BC_CRS{$b}->[2] } @BARCODES;  #sort barcodes by number of reads
   while (my $this_bc = shift @BARCODES) {
     #starting with the barcode with the least reads
     
@@ -173,13 +200,16 @@ while (my ($crs, $barcodes) = each(%CRS_BC)) {
   
 }
 
+$time = CORE::localtime;
+warn "$time: Completed BC correction\n";
+
 
 #############################################
 ####         Output results to csv       ####
 #############################################
 
 
-open(OUT, ">$outfile");
+open(OUT, "| gzip -c > $outfile");
 print OUT "BARCODE,CRS,READS,DEVIANTREADS,MEANMATCHES,MINMATCHES,MAXMATCHES\n";
 while ( my ($barcode, $crs) = each (%BC_CRS_fixed)) {
   my $line = join(",", ($barcode , $crs->[0], $crs->[2],$crs->[3], sum(@{$crs->[1]}) / scalar(@{$crs->[1]}), min(@{$crs->[1]}),max(@{$crs->[1]})    ));
@@ -187,3 +217,6 @@ while ( my ($barcode, $crs) = each (%BC_CRS_fixed)) {
   
 }
 close(OUT);
+
+$time = CORE::localtime;
+warn "Finished the job at: $time\n";
