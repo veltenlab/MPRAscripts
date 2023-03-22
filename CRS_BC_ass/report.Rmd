@@ -10,18 +10,26 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Basic statistics
 
 
-```{r read_data, fing.width=6, fig.height=4.5}
-.libPaths(c("/home/lars/RLibs/R4.1.2Seurat/", "/home/lars/RLibs/R4.1.2Bioconductor/"))
+```{r read_data, fig.width=6, fig.height=4.5}
+.libPaths(c("/home/lars/RLibs/R4.2.1/"))
 require(plyr)
 require(ggplot2)
-mapped <- read.csv(gzfile("/users/lvelten/lvelten/Analysis/SCG4SYN/LibA/CRS_BC_ass/myPipeline/outNextseq/mapped.csv.gz"))
-filtered <- mapped
-hist(log10(filtered$READS))
+mapped <- read.csv(gzfile("/users/lvelten/lvelten/Analysis/SCG4SYN/LibH/BCass/Analysis/mapped_filter.csv.gz"))
+#mapped <- read.csv(gzfile("/users/lvelten/project/SCG4SYN/Experiments/221003_LibraryA_association/Analysis/merged_34_48/mapped_filter.csv.gz"))
+#mapped <- read.csv(gzfile("/users/lvelten/project/SCG4SYN/Experiments/230308_LibraryH_association/Analysis/minP/mapped_filter.csv.gz"))
+filtered <- na.omit(mapped)
 ```
 
-There are `r nrow(filtered)` barcodes of which `r sum(filtered$READS >= 5) ` with at least 5 reads. In total `r sum(filtered$READS)` reads support a valid CRS-barcode match and `r sum(filtered$DEVIANTREADS)` reads support a secondary CRS-barcode match
 
-Sequencing is not saturated - more reads give more barcodes.
+```{r histo2, fig.width=6, fig.height=4.5}
+nreads <- data.frame(reads = as.integer(names(table(filtered$READS))), instances = table(filtered$READS))
+qplot(x = reads, y = instances.Freq, data = nreads, log = "xy") + xlab("Reads per barcodes") + ylab("Count")
+```
+
+There are `r nrow(filtered)` barcodes of which `r sum(filtered$READS >= 5) ` with at least 5 reads. In total `r sum(filtered$READS)` reads support a valid CRS-barcode match and `r sum(filtered$DEVIANTREADS)` reads support a secondary CRS-barcode match. This is only `r round(100*sum(filtered$DEVIANTREADS)/(sum(filtered$READS) + sum(filtered$DEVIANTREADS)), digits=1)` %.
+
+Something is off here, because the libraries were sequenced to a depth of 280 Million? Looks like most barcodes (by far) were observed with one read. Count this to confirm in the pipeline.
+
 
 ```{r filter, fing.width=6, fig.height=4.5}
 #apply filters
@@ -76,11 +84,12 @@ qplot(x = rep, geom="histogram", data=crs) + xlab("Representation of the CRS in 
 
 print(summary(crs$reads/sum(crs$reads)))
 ```
-Also the representation of the different CRS (in terms of volume) is not so even even: 90% of the library are represented with at least  `r round(100*quantile(crs$reads/sum(crs$reads),0.1),digits=5)` % , that is, `r round(100*quantile(crs$reads/sum(crs$reads),0.1)/max(crs$reads/sum(crs$reads)), digits=2)` % of the most abundantly represented CRS and `r round(100*quantile(crs$reads/sum(crs$reads),0.1)/(1/10000), digits=2)`% of what it would be in perfect world.
+Also the representation of the different CRS (in terms of volume) is not so even even: 90% of the library are represented with at least  `r round(100*quantile(crs$reads/sum(crs$reads),0.1),digits=5)` % , that is, `r round(100*quantile(crs$reads/sum(crs$reads),0.1)/max(crs$reads/sum(crs$reads)), digits=2)` % of the most abundantly represented CRS and `r round(100*quantile(crs$reads/sum(crs$reads),0.1)/(1/nrow(crs)), digits=2)`% of what it would be in perfect world.
 
 ```{r crsreadbox, fing.width=8, fig.height=4.5}
-crs$tf <- gsub("__.+","",crs$CRS)
-qplot(x = tf , y = reads / sum(reads), geom="boxplot", data=crs) + ylab("Representation of the CRS in the library") + theme(axis.text.x = element_text(angle = 90))
+crs$round <- gsub(".+__","",crs$CRS)
+crs$round[!crs$round %in% c("Round1","Round2","Round3","TForder_block")] <- "Controls"
+qplot(x = round , y = reads / sum(reads), geom="boxplot", data=crs) + ylab("Representation of the CRS in the library") + theme(axis.text.x = element_text(angle = 90))
 ```
 
 Analyze if there is a relationship between coverage and GC content
@@ -88,8 +97,8 @@ Analyze if there is a relationship between coverage and GC content
 ```{r crsreadseq, fig.width=8, fig.height=4.5}
 require(stringr)
 require(LSD)
-load("/users/lvelten/lvelten/Analysis/SCG4SYN/LibA/deep/220316_Library1_names.RData")
-crs$seq <- Library1_renamed[as.character(crs$CRS)]
+Library1_renamed <- readRDS("/users/lvelten//lvelten/Analysis/SCG4SYN/LibH/221219_LibraryHeptad_for_ordering.rds")
+crs$seq <- tolower(Library1_renamed[as.character(crs$CRS)])
 crs$gc <- str_count(as.character(crs$seq), "[gc]") / nchar(crs$seq)
 crs$gc.bin <- infotheo::discretize(crs$gc, nbins = 20)$X
 heatscatter(x = crs$gc , y = crs$reads / sum(crs$reads))
@@ -97,47 +106,4 @@ qplot(x = as.factor(gc.bin) , y = reads / sum(reads), geom="boxplot", data=crs) 
 
 ```
 
-Or in general with sequence
-
-```{r crsseqmodel, fig.width=8, fig.height=4.5}
-
-bases <- c("a","c","g","t")
-dimers <- sapply(bases, function(a) {
-  sapply(bases, function(b) {
-    paste0(a,b)
-  })
-})
-get_kmer <- function(k) {
-  if (k==1) return(bases)
-  unlist(lapply(bases, function(a) {
-  sapply(get_kmer(k-1), function(b) {
-    paste0(a,b)
-  })
-}))
-}
-kmers <- unname(unlist(lapply(1:5,get_kmer)))
-
-kmer.content <- sapply(kmers, function(x) str_count(crs$seq,x) / nchar(crs$seq))
-dimer.content <- sapply(dimers, function(x) str_count(crs$seq,x) / nchar(crs$seq))
-base.content <- sapply(bases, function(x) str_count(crs$seq,x) / nchar(crs$seq))
-df <- cbind(dimer.content, base.content, coverage = crs$rep)
-m <- lm(coverage ~ . , data = as.data.frame(df))
-print(summary(m))
-crs$seq.model <- predict(m , as.data.frame(df))
-heatscatter(x = crs$seq.model , y = crs$reads / sum(crs$reads))
-
-
-```
-
-Model including up to 6 mers, and lasso:
-
-```{r crskmer, fig.width=8, fig.height=4.5}
-require(glmnet)
-net <- cv.glmnet(kmer.content, y = crs$rep)
-feat <- predict(net, s = "lambda.min", type = "coefficients")
-crs$lasso.model <- predict(net,s="lambda.min",newx = kmer.content )[,1]
-heatscatter(x = crs$lasso.model , y = crs$reads / sum(crs$reads))
-print(feat[feat[,1]!=0,])
-```
-
-Suggests that maybe we can gain from some PCR optimization (since the representation is sequence dependent) BUT it's bot a very strong effect and not related to GC content, so probably by increasing the coverage in E. Coli we can gain more.
+Something wrong with the sequence names, get correct names from Robert

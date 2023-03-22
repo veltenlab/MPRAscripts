@@ -3,10 +3,10 @@
 #$ -cwd 
 #$ -e mapNextseq.err
 #$ -o mapNextseq.out
-#$ -l virtual_free=50G,h_rt=24:00:00
+#$ -l virtual_free=100G,h_rt=24:00:00
 #$ -q long-sl7
 
-#when I checked the memory footprint of the perl script was <15GByte for a NextSeq MidOutput
+#For Library H the memory footprint was 58Gig and it took 13 hours. The memory is larger, if there are many barcodes.
 
 module use /software/as/el7.2/EasyBuild/CRG/modules/all
 module load BWA/0.7.17
@@ -26,9 +26,10 @@ THREADS=1
 
 bwa index $REF
 
-bwa mem -t $THREADS $REF $FWD $REV | samtools view -b > $OUT/aligned.bam 2> $OUT/alignment.log
+bwa mem -a -t $THREADS $REF $FWD $REV | samtools view -b > $OUT/aligned.bam 2> $OUT/alignment.log 
+#added -a flag here to report also secondary alignments
 
-perl map_crs_bc_BAM_2.pl $BC $OUT/aligned.bam $OUT/mapped.csv 2> $OUT/mapping.log
+perl map_crs_bc_BAM_2_with_filter.pl $BC $OUT/aligned.bam $OUT/mapped.csv 2> $OUT/mapping.log
 
 #also need to run report.Rmd to filter the output
 
