@@ -23,14 +23,14 @@
 #Function
 get_CRS_summary <- function(f, run_id, Experiments = NULL,
          use.col = "UMI5", #the column in the PERL pipeline output to use (e.g. UMI5: UMIs with >=5 reads)
-         plot =T, #create plots on the way in the directory specified as outdir
+         plot =F, #create plots on the way in the directory specified as outdir
          outdir = "~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/plots", 
          min.dna.umi = 1, #to filter at the level of CRS barcodes: Only include CRS BC covered with at least this many UMIs at DNA level
          min.rna.umi = 0, #to filter at the level of CRS barcodes: Only include CRS BC covered with at least this many UMIs at RNA level
          umi.filter.connection = `&`, #DNA filter AND RNA filter or DNA filter OR RNA filter?
          dna.crs.is.umi = T, #whether to treat DNA CRS observations as single molecules no matter how many UMIs there are
          rna.crs.is.umi = F,
-         barcodeWhitelist = NULL,
+         barcodeWhitelist = NULL, #a filtered bc crs association obejct (created from the file in bc_crs_ass if not supplied)
          homopolymer = 0, #max stretch of homopolymer allowed in barcode. If 0, no filter is applied
          bc_crs_ass = "~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Files/220918_CRS_BC_ass/mapped.filtered.custom.csv",
          crs_filter =10, #min UMIs per CRS to be flagged as pass
