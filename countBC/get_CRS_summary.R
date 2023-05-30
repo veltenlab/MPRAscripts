@@ -11,37 +11,11 @@
 #example 2 - best conditions so far
 
 
-#CRS.all <- get_CRS_summary("~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220918_EoBaso/", paste(Sys.Date(), "_EoBaso500_UMI10_DNAisUMI_crsfilter20", sep =""), use.col = "UMI10", filter_controlGRE= T,return_report = T, save_report = T, dna.crs.is.umi = T, crs_filter = 20)
-
-
-## Test area
-#Experiments = NULL
-#f = "~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Analysis/count_BC/NextSeq2000/220918_EoBaso/"
-#
-#if (is.null(Experiments)){
-#  rna <- list.files(f, "RNA\\d.csv")
-#  dna <- list.files(f, "DNA\\d.csv")
-#  RNA <- lapply(file.path(f, rna), read.csv)
-#  DNA <- lapply(file.path(f, dna), read.csv)
-#  Experiments <- mapply(merge, DNA, RNA, MoreArgs = list( by = c("BARCODE","CRS"), suffixes = c(".dna",".rna"), all = T), SIMPLIFY =FALSE )
-#}
-#
-#use.col = "UMI5"
-#
-##replace NAs by 0
-#Experiments <- lapply(Experiments, function(exx) {
-#  for (i in 3:ncol(exx)) exx[is.na(exx[,i]),i] <- 0
-#  exx$norm <- exx[,paste0(use.col,".rna")] / exx[,paste0(use.col,".dna")]
-#  exx$USE.dna <- exx[,paste0(use.col,".dna")]
-#  exx$USE.rna <- exx[,paste0(use.col,".rna")]
-#  exx
-#})
-#
-#if(filter_controlGRE) {
-#  Experiments <- lapply(Experiments, function(exx){
-#    exx <- exx[which(!grepl(pattern = "^Ctrl_*", x = exx$CRS, ignore.case = T)),]
-#  })
-#}
+#final <-  mcmapply(get_CRS_summary,folders,names(folders), replicate(7, NULL), c("UMI3","UMI3","UMI3","UMI10","UMI10","UMI10","UMI10"),
+#                    MoreArgs = list(outdir = "allout/finalrerun/", return_report = T, 
+#                                    dna.crs.is.umi = T, crs_filter = 10, filter_controlGRE=T,
+#                                    bc_crs_ass = "/users/lvelten/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Files/220918_CRS_BC_ass/mapped.filtered.custom.csv"), 
+#                    SIMPLIFY = F, mc.cores = 7, mc.preschedule = F)
 
 ##
 '%nin%' = Negate('%in%')
@@ -54,12 +28,12 @@ get_CRS_summary <- function(f, run_id, Experiments = NULL,
          min.dna.umi = 1, #to filter at the level of CRS barcodes: Only include CRS BC covered with at least this many UMIs at DNA level
          min.rna.umi = 0, #to filter at the level of CRS barcodes: Only include CRS BC covered with at least this many UMIs at RNA level
          umi.filter.connection = `&`, #DNA filter AND RNA filter or DNA filter OR RNA filter?
-         dna.crs.is.umi = F, #whether to treat DNA CRS observations as single molecules no matter how many UMIs there are
+         dna.crs.is.umi = T, #whether to treat DNA CRS observations as single molecules no matter how many UMIs there are
          rna.crs.is.umi = F,
          barcodeWhitelist = NULL,
          homopolymer = 0, #max stretch of homopolymer allowed in barcode. If 0, no filter is applied
          bc_crs_ass = "~/cluster_mount/project/SCG4SYN/Experiments/220908_RF_HSC_MPRA_screen/Files/220918_CRS_BC_ass/mapped.filtered.custom.csv",
-         crs_filter =100, #min UMIs per CRS to be flagged as pass
+         crs_filter =10, #min UMIs per CRS to be flagged as pass
          return_report = F, #besides returning the CRS data frame also return a list with some summary stats?
          save_report = F , # Save the summary stats in a CSV file for later comparisons
          filter_controlGRE = F, #Filter the control barcodes out
