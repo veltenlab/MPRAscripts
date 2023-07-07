@@ -52,7 +52,8 @@ sub cigar_to_score {
   my $counter = 0;
   my @bamsplit; #split bam entries
   my %maps_score;
-  my %maps_count;
+  my %maps_count_fwd;
+  my %maps_count_rev;
   my $multiple_alignments = 0;
   ### read in all lines in the BAM file that correspond to that read name
   my $nbc = get_next_barcode();
@@ -64,12 +65,14 @@ sub cigar_to_score {
     
     
     @bamsplit = split /\t/, $bamline;
+    my @bits = reverse(split(//, sprintf("%b", $bamsplit[1]))); #parse out flags
     
     if ($bamsplit[0] ne $readname) { #if the bam file is ahead
       #wrap up
       #select only alignments where both fwd and rev read match
 
-      my @considered = grep {$maps_count{$_} >= 2} keys %maps_count;
+      my @considered = grep {$maps_count_fwd{$_} == 1 and $maps_count_rev{$_} == 1} keys %maps_score;
+      
       
       if (scalar(@considered) == 1) {
         $selectedmap = $considered[0];
@@ -104,7 +107,8 @@ sub cigar_to_score {
       
       #Start next round get next barcode
       %maps_score = ();
-      %maps_count = ();
+      %maps_count_fwd = ();
+      %maps_count_rev = ();
       $nbc = get_next_barcode();
       last unless $nbc;
       ($readname, $bcline) = @{$nbc};
@@ -115,10 +119,15 @@ sub cigar_to_score {
     
     if (defined($maps_score{$bamsplit[2]})) {
       $maps_score{$bamsplit[2]} += cigar_to_score($bamsplit[5]);
-      $maps_count{$bamsplit[2]}++;
+      if ($bits[4]) {
+        $maps_count_fwd{$bamsplit[2]}++;
+      } else {
+        $maps_count_rev{$bamsplit[2]}++;
+      }
     } else {
       $maps_score{$bamsplit[2]} = cigar_to_score($bamsplit[5]);
-      $maps_count{$bamsplit[2]} = 1;
+      $maps_count_fwd{$bamsplit[2]} = $bits[4];
+      $maps_count_rev{$bamsplit[2]} = 1 - $bits[4];
     }
     
   }
