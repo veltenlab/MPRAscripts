@@ -26,7 +26,7 @@ THREADS=1
 
 bwa index $REF
 
-bwa mem -t $THREADS $REF $CRS | samtools view -b > $OUT/aligned.bam 2> $OUT/alignment.log 
+bwa mem -t -a $THREADS $REF $CRS | samtools view -b > $OUT/aligned.bam 2> $OUT/alignment.log 
 #added -a flag here to report also secondary alignments
 
 perl map_crs_bc_BAM_2_with_filter.pl $BC $GUIDE $OUT/aligned.bam $OUT/mapped.csv 2> $OUT/mapping.log
