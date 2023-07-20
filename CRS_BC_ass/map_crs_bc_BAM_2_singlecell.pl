@@ -41,7 +41,7 @@ sub get_next_barcode {
   }
   
   $readname =~ s/^@(\S+)\s.+/$1/;  
-  my @OUT = ($readname, $barcode . $guide);
+  my @OUT = ($readname, $barcode . substr($guide,0,15));
   return \@OUT;
 }
 
@@ -150,6 +150,7 @@ sub cigar_to_score {
 
 close(BC);
 close(BAM);
+close(GUIDE);
 
 $time = CORE::localtime;
 warn "$time: Completed reading BAM file\n";
