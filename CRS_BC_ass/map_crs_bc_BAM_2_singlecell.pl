@@ -76,7 +76,7 @@ sub cigar_to_score {
     
     
     @bamsplit = split /\t/, $bamline;
-    my @bits = reverse(split(//, sprintf("%b", $bamsplit[1]))); #parse out flags
+    my @bits = reverse(split(//, sprintf("%4.4b", $bamsplit[1]))); #parse out flags
     
     if ($bamsplit[0] ne $readname) { #if the bam file is ahead
       #wrap up
