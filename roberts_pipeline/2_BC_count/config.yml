@@ -1,0 +1,27 @@
+## List of all files used as input
+
+#Directories
+AssDir: "/users/lvelten/project/SCG4SYN/Pipelines/MPRA/1_CRS_BC_association/output" 
+InDir: "/users/lvelten/project/SCG4SYN/merged_data/output/GRE_count"
+OutDir: "/users/lvelten/project/SCG4SYN/Pipelines/MPRA/2_BC_count/output"
+
+# Parameters for Libraries
+Design:
+  [LibASeqDesign, LibHSeqDesign] # , LibBSeqDesign
+
+ScreenID:
+  [2_HSC, 3_HSC, 4_HSC] # 
+
+FastqDir:
+  [LibraryA_minPInitial, LibraryA_minPOptimized, LibraryH_minP] # 
+
+LibraryName:
+  [LibAminPInitial, LibAminPOpt, LibraryH_minP] # 
+
+# Parameters for count_BC.pl
+BCcounting:
+  MINRUMI: 20 # Generate a  entry for how many BCs have this much UMIs fron 1 to the number
+  MAXRUMI: 10000000 # Set high treshhold in case some sequence is 
+  downs: 0 # 0 = no downsampling or 1 = downsampling
+  downsto: 0.5 # percentage of data to downsample to
+

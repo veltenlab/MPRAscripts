@@ -1,0 +1,138 @@
+### input, output and shell paths are all relative to the project directory ###
+
+configfile: "config.yml"
+
+from itertools import product
+
+#Restrict wildcards, so it doesnt create weird combinations
+wildcard_constraints:
+  Design='|'.join(config["Design"]),
+  FastqDir='|'.join(config["FastqDir"]),
+  LibraryName='|'.join(config["LibraryName"])
+
+# Load Input,Output and Design directory from the config file
+OutDir=config["OutDir"] 
+InDir=config["InDir"]
+DesignFolder=config["DesignFolder"]
+
+# this checks whether a particular combination is among the ones that should be processed
+# https://stackoverflow.com/questions/41185567/how-to-use-expand-in-snakemake-when-some-particular-combinations-of-wildcards-ar
+
+def filter_combinator(combinator, combs):
+    def filtered_combinator(*args, **kwargs):
+        for wc_comb in combinator(*args, **kwargs):
+            # Use frozenset instead of tuple
+            # in order to accomodate
+            # unpredictable wildcard order
+            if frozenset(wc_comb) in combs:
+                yield wc_comb
+    return filtered_combinator
+
+right_combinations = {
+    frozenset({("Design", "LibASeqDesign"), ("FastqDir", "LibraryA_minPInitial"), ("LibraryName", "LibAminPInitial")}),
+    frozenset({("Design", "LibASeqDesign"), ("FastqDir", "LibraryA_minPOptimized"), ("LibraryName", "LibAminPOpt")}),
+    frozenset({("Design", "LibHSeqDesign"), ("FastqDir", "LibraryH_minP"), ("LibraryName", "LibHminP")}),
+    frozenset({("Design", "LibHSeqDesign"), ("FastqDir", "LibraryH_minCMV"), ("LibraryName", "LibHminCMV")}),
+    frozenset({("Design", "LibBSeqDesign"), ("FastqDir", "LibraryB_minP"), ("LibraryName", "LibBminP")})}
+
+filtered_product = filter_combinator(product, right_combinations)   
+
+# Rula all
+rule all:
+    input:
+        expand(DesignFolder+"/design_files/{Design}.fa.ann",
+            Design = config["Design"]),
+        expand(OutDir+"/{FastqDir}/{Design}_{LibraryName}_aligned.bam", 
+            filtered_product,
+            FastqDir = config["FastqDir"],
+            Design = config["Design"],
+            LibraryName = config["LibraryName"]),
+        expand(OutDir+"/{FastqDir}/{Design}_{LibraryName}_mapped.csv.gz", 
+            filtered_product,
+            FastqDir = config["FastqDir"],
+            Design = config["Design"],
+            LibraryName = config["LibraryName"]),
+        expand(OutDir+"/{FastqDir}/{Design}_{LibraryName}_CrsBCReport.html", 
+            filtered_product,
+            FastqDir = config["FastqDir"],
+            Design = config["Design"],
+            LibraryName = config["LibraryName"])
+
+
+#Index Design Files with each sequence
+rule index_design:
+    input:
+        input = DesignFolder+"/design_files/{Design}.fa"
+    output:
+        output = DesignFolder+"/design_files/{Design}.fa.ann"
+    conda:
+       "MPRA_processing.yml"    
+    log:
+        OutDir+"/log_files/index/{Design}_index_fasta.log"
+    shell:
+        "bwa index {input.input} "
+        "2> {log}"
+
+rule bwa_map:
+    input:
+        design = DesignFolder+"/design_files/{Design}.fa",
+        index = DesignFolder+"/design_files/{Design}.fa.ann",
+        FWD = InDir+"/{FastqDir}/{LibraryName}_merged_R1.fastq.gz",
+        REV = InDir+"/{FastqDir}/{LibraryName}_merged_R3.fastq.gz"
+    output:
+        bam=OutDir+"/{FastqDir}/{Design}_{LibraryName}_aligned.bam"
+    conda:
+       "MPRA_processing.yml"   
+    params:
+        threads=config["threads_bwa"]   
+    log:
+        OutDir+"/log_files/bwa_map/{Design}_{FastqDir}_{LibraryName}_bwa_map.log"
+    shell:
+        "bwa mem -a -t {params.threads} {input.design} {input.FWD} {input.REV} | samtools view -b > {output.bam} " 
+        "2> {log}" 
+
+rule CRS_BC_ass:
+    input:  
+        BC=InDir+"/{FastqDir}/{LibraryName}_merged_R2.fastq.gz",
+        bam=OutDir+"/{FastqDir}/{Design}_{LibraryName}_aligned.bam"
+    output:
+        OutDir+"/{FastqDir}/{Design}_{LibraryName}_mapped.csv.gz"
+    conda:
+       "MPRA_processing.yml"  
+    log:
+        OutDir+"/log_files/BCmap/{Design}_{FastqDir}_{LibraryName}_BCmap.log"
+    shell:
+        "perl scripts/MapCrsBCBamFilter.pl {input.BC} {input.bam} {output} "
+        "2> {log}"
+
+
+rule custom_BC:
+    input: 
+        mapped = OutDir+"/{FastqDir}/{Design}_{LibraryName}_mapped.csv.gz",
+        fasta = DesignFolder+"/design_files/{Design}.fa",
+        meta = DesignFolder+"/meta_files/{Design}_meta_info.csv",
+        od = OutDir,
+    output:
+        OutDir+"/{FastqDir}/{Design}_{LibraryName}_CrsBCReport.html"
+    conda:
+        "MPRA_Rproc.yml"
+    log:
+        OutDir+"/log_files/FilterBC/{Design}_{FastqDir}_{LibraryName}_FilterBC.log"
+    script:
+        "scripts/CrsBCReport.Rmd" 
+
+
+# rule custom_BC:
+#     input: 
+#         mapped = OutDir+"/{FastqDir}/{Design}_{LibraryName}_mapped.csv.gz"
+#     output:
+#        OutDir+"/{FastqDir}/{Design}_{LibraryName}_output.rds" 
+#     conda:
+#         "MPRA_processing.yml"  
+#     log:
+#         OutDir+"/log_files/FilterBC/{Design}_{FastqDir}_{LibraryName}_FilterBC.log"
+#     shell:
+#         "Rscript scripts/test.R "  
+#         "-i {input.mapped} "
+#         "-o {output} "
+

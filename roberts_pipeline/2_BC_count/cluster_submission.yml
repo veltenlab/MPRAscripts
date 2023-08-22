@@ -1,0 +1,44 @@
+# SET CLUSTER RESOURCES FOR RUNNING clonetracer ===================
+
+__resources__:
+  gpu:
+    - "gpu"
+    - "nvidia_gpu"
+
+__default__:
+  error: log_files/stderr.txt
+  output: log_files/stdout.txt
+  queue: short-sl7,long-sl7
+  email: robert.froemel@crg.eu
+  mail_options: a
+  pe: smp 1
+  walltime: 04:00:00
+  virtual_memory: 30000
+  virtual_free: 30000M
+  h_fsize: 10000000 # max file size written to disk
+
+count_BC_filtered:
+  error: log_files/stderr.txt
+  output: log_files/stdout.txt
+  queue: short-sl7,long-sl7
+  email: robert.froemel@crg.eu
+  mail_options: a
+  pe: smp 1
+  walltime: 4:00:00 
+  virtual_memory: 40000
+  virtual_free: 40000M
+  h_fsize: 10000000 
+
+
+count_BC_unfiltered:
+  error: log_files/stderr.txt
+  output: log_files/stdout.txt
+  queue: short-sl7,long-sl7
+  email: robert.froemel@crg.eu
+  mail_options: a
+  pe: smp 1
+  walltime: 6:00:00 
+  virtual_memory: 60000
+  virtual_free: 60000M
+  h_fsize: 10000000 
+
