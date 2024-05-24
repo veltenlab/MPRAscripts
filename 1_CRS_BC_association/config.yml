@@ -1,0 +1,18 @@
+## List of all files used as input
+
+Design:
+  [LibASeqDesign, LibHSeqDesign, LibBSeqDesign] 
+
+FastqDir:
+  [LibraryA_minPInitial, LibraryA_minPOptimized, LibraryH_minP,  LibraryH_minCMV, LibraryB_minP] # 
+
+LibraryName:
+  [LibAminPInitial, LibAminPOpt, LibHminP, LibHminCMV, LibBminP] #  
+
+threads_bwa: 8
+
+InDir: "/users/lvelten/project/SCG4SYN/merged_data/output/CRS_Barcode"
+
+OutDir: "/users/lvelten/project/SCG4SYN/Pipelines/MPRA/1_CRS_BC_association/output"
+
+DesignFolder: "/users/lvelten/project/SCG4SYN/LibraryDesign/230731_MetaDesignFiles"
