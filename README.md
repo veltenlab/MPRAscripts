@@ -9,6 +9,7 @@ The pipeline consists out of 3 separate steps
 
 
 Step 1: 1_CRS_BC_association
+  - [MapCrsBCBamFilter.pl](1_CRS_BC_association/scripts/MapCrsBCBamFilter.pl) for a usage example.
 
 Step 2: 2_BC_count
 
