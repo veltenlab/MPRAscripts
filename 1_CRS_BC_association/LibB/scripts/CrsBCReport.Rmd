@@ -1,0 +1,282 @@
+---
+title: "Crs BC association Report"
+author: "Robert Frömel"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+params:
+  rmd: "CrsBCReport.Rmd"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_float:
+      collapsed: false
+    highlight: pygments 
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+Sys.time()
+```
+
+```{r, include=FALSE}
+
+# set path to package library
+.libPaths("/path/to/snakemake/env/MPRA_R_processing/lib/R/library")
+
+# set global chunk settings
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+suppressPackageStartupMessages({
+  require(plyr)
+  require(dplyr)
+  require(readr)
+  require(seqinr)
+  require(stringr)  
+  require(ggplot2)
+  require(DT)
+  require(htmltools)
+})
+
+# get the directory where Snakefile is stored
+directory <- gsub("/[^/]*$", "", snakemake@scriptdir)
+
+# Load in wildcards
+FastqDir <- snakemake@wildcards$FastqDir
+Design <- snakemake@wildcards$Design
+LibraryName <- snakemake@wildcards$LibraryName
+OutDir <- snakemake@input$od
+
+# directory where plots will be exported
+plots_dir <- file.path(OutDir, FastqDir, "plots")
+
+# create directory to store plots
+dir.create(plots_dir, showWarnings = F)
+```
+
+
+# GRE-BC asociation of **`r snakemake@wildcards$FastqDir`**.
+
+
+```{r ReadMapped}
+mapped <-read_csv(snakemake@input$mapped)
+```
+
+<br>
+
+We have **`r nrow(mapped)`** barcodes-CRS pairs
+
+```{r PlotReads}
+readhist <- ggplot(mapped) + geom_histogram(aes(x=log10(READS)), stat = "count") + ylab("Frequency") + xlab("Log10(Reads)") + theme_bw()
+readhist
+```
+
+```{r }
+# Save the plot
+ggsave(readhist,
+       filename = file.path(plots_dir, "Reads_histogram.png"),
+       height = 8, width = 7)
+```
+
+<br>
+How about alignment quality / synthesis errors in the CRS library? <br>
+**`r sum(mapped$MEANMATCHES >= 290 & mapped$MEANMATCHES <= 292)`** elements have a quality between 290 adn 292  and <br> 
+**`r sum(mapped$MEANMATCHES <= 250)`** have a quality below 250.
+
+```{r SeqStats}
+Matchhist <- ggplot(mapped) + geom_histogram(aes(x=MEANMATCHES)) + ylab("log10(Frequency)") + xlab("Mean read quality") + theme_bw() + scale_x_continuous(limits=c(250,300), oob = scales::squish) + scale_y_log10()
+Matchhist
+```
+
+```{r }
+# Save the plot
+ggsave(Matchhist,
+       filename = file.path(plots_dir, "Match_histogram.png"),
+       height = 8, width = 7)
+```
+
+In terms of volume, **`r round(100*sum(mapped$READS[mapped$MEANMATCHES>290])/sum(mapped$READS),digits=2)`%** of the library has a maximum of 2 mismatches. 
+
+```{r SubsetMapped}
+filtered <- mapped
+filtered <- subset(filtered, READS > DEVIANTREADS * 5 & CRS != "*") #apply filters: reads > deviant reads * 5, matches a CRS
+filtered <- subset(filtered, MEANMATCHES >= 290)
+filtered <- subset(filtered, MEANMATCHES <= 292)
+```
+
+**`r nrow(filtered)`** barcodes-CRS pairs pass the DEVIANTREADS and MEANMATCHES quality filter
+
+```{r FilterHomoNucleotides}
+filtered <- filtered %>%
+  filter(!str_count(.$BARCODE, pattern = "A") >= 10) %>%
+  filter(!str_count(.$BARCODE, pattern = "C") >= 10) %>%
+  filter(!str_count(.$BARCODE, pattern = "G") >= 10) %>%
+  filter(!str_count(.$BARCODE, pattern = "T") >= 10) 
+```
+
+After subsetting for Homonucleotides, we still have **`r nrow(filtered)`** barcodes-CRS pairs
+
+```{r WriteOutputCSVFile}
+write_csv(filtered, file = gzfile(paste0(OutDir,"/", FastqDir, "/", Design, "_", LibraryName, "_mapped_filtered.csv.gz", sep="", collapse="")))
+```
+
+# GRE statistics
+
+```{r GREStatistics}
+crs <- ddply(filtered, "CRS", summarise, n = length(BARCODE), reads = sum(READS))
+```
+
+```{r WriteOutputRDSFile}
+saveRDS(crs, paste0(OutDir,"/", FastqDir, "/", Design, "_", LibraryName, "_crs.rds", sep="", collapse=""))
+```
+
+```{r ReadFasta}
+fasta <- read.fasta(snakemake@input$fasta)
+meta_info <- read_csv(snakemake@input$meta)
+```
+
+**`r nrow(crs)`** out of **`r length(fasta)`** CRS are represented in the library. <br>
+This correspodns to: **`r nrow(crs)/length(fasta)`% ** <br>
+
+How many barcodes:
+
+<br>
+
+```{r GREHistogram, fing.width=6, fig.height=4.5}
+GREHistogram <- ggplot(crs) + geom_histogram(aes(x=n), stat = "count") + ylab("Frequency") + xlab("Number of Barcodes") + theme_bw()
+GREHistogram
+```
+
+```{r }
+# Save the plot
+ggsave(GREHistogram,
+       filename = file.path(plots_dir, "GRE_histogram.png"),
+       height = 8, width = 7)
+```
+
+## BC mapping
+
+```{r GREBCSummary}
+print(summary(crs$n))
+```
+
+```{r GREQuantile}
+crs$rep <- with(crs, reads / sum(reads))
+crs$nrep <- with(crs, rep/quantile(rep, 0.05))
+```
+
+## Quantile plot
+
+```{r GREQuantilePlot}
+GREQuantilePlot <- qplot(x = 1:nrow(crs), y =nrep , data=crs[order(crs$rep),]) + xlab("Representation of the CRS in the library") + 
+  geom_vline(xintercept = c(0.05, 0.95) * nrow(crs)) + geom_hline(yintercept = quantile(crs$nrep, 0.95)) + scale_y_log10(breaks = quantile(crs$nrep, c(0,0.05,0.95,1)), labels = round(quantile(crs$nrep, c(0,0.05,0.95,1)), digits=2))+ theme_bw()
+GREQuantilePlot
+```
+
+```{r }
+# Save the plot
+ggsave(GREQuantilePlot,
+       filename = file.path(plots_dir, "GRE_Quantile.png"),
+       height = 8, width = 7)
+```
+
+<br>
+And what about the representation:
+
+```{r GRERepresentationHistogram}
+GRERepresentationHist <- ggplot(crs) + geom_histogram(aes(x=rep), stat = "count") + ylab("Frequency") + xlab("Representation of the CRS in the library") + theme_bw()
+GRERepresentationHist
+```
+
+```{r }
+# Save the plot
+ggsave(GRERepresentationHist,
+       filename = file.path(plots_dir, "GRE_representation_histogram.png"),
+       height = 8, width = 7)
+```
+
+## Read statistics
+
+```{r GREQuantileSummary}
+print(summary(crs$reads/sum(crs$reads)))
+```
+
+# Visualizing key design features for *`r FastqDir`**.
+
+<br>
+
+```{r }
+crs_merge <- crs
+colnames(crs_merge)[1] <- c("SeqID")
+crs_merge <- inner_join(crs_merge, meta_info, by = "SeqID")
+```
+
+```{r}
+Feature_tf_boxplot <- ggplot(crs_merge ) + 
+        geom_boxplot(aes(x=Universal.FirstTF, y = reads / sum(reads))) + 
+        ylab("Reads / sum(Reads)") + 
+        xlab("TFs") + 
+        theme_bw()  + 
+        theme(axis.text.x = element_text(angle = 90))
+
+Feature_spacing_boxplot <- ggplot(crs_merge ) + 
+        geom_boxplot(aes(x=Universal.Spacing, y = reads / sum(reads), group = Universal.Spacing)) + 
+        ylab("Reads / sum(Reads)") + 
+        xlab("Binding sites affinity") + 
+        theme_bw() + 
+        theme(axis.text.x = element_text(angle = 90))
+
+Feature_sublibrary_boxplot <- ggplot(crs_merge ) + 
+        geom_boxplot(aes(x=SubLibrary, y = reads / sum(reads))) + 
+        ylab("Reads / sum(Reads)") + 
+        xlab("Sub Library") + 
+        theme_bw() + 
+        theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+Feature_tf_boxplot
+```
+
+```{r }
+# Save the plot
+ggsave(Feature_tf_boxplot,
+       filename = file.path(plots_dir, "Feature_tf_boxplot.png"),
+       height = 8, width = 7)
+```
+
+```{r}
+Feature_spacing_boxplot
+```
+
+```{r }
+# Save the plot
+ggsave(Feature_spacing_boxplot,
+       filename = file.path(plots_dir, "Feature_spacing_boxplot.png"),
+       height = 8, width = 7)
+```
+
+```{r}
+Feature_sublibrary_boxplot
+```
+
+```{r }
+# Save the plot
+ggsave(Feature_sublibrary_boxplot,
+       filename = file.path(plots_dir, "Feature_sublibrary_boxplot.png"),
+       height = 8, width = 7)
+```
+
+# Final Sumamry
+
+**90%** of the library are represented with at least  **`r round(100*quantile(crs$reads/sum(crs$reads),0.1),digits=5)` %** , <br> 
+that is, **`r round(100*quantile(crs$reads/sum(crs$reads),0.1)/max(crs$reads/sum(crs$reads)), digits=2)` %** of the most abundantly represented CRS <br> 
+and **`r round(100*quantile(crs$reads/sum(crs$reads),0.1)/(1/10000), digits=2)`%** of what it would be in perfect world.
+
+
+# Source
+* <a download="CrsBCReport.Rmd" href="`r base64enc::dataURI(file = params$rmd, mime = 'text/rmd',
+    encoding = 'base64')`">R Markdown source file (to produce this document)</a>
+

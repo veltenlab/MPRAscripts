@@ -5,7 +5,6 @@ OutDir: "/path/to/project/folder/MPRAscripts/3_Report_screen/output_snake/"
 #New part
 Screen: [2_HSC_LibraryA_minPInitial]
 
-
 InitialScreen:
   cores: 7
   bccrsass: "/path/to/project/folder/MPRAscripts/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz"

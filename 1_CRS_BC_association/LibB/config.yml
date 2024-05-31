@@ -1,0 +1,24 @@
+## List of all files used as input
+
+Design:
+  [LibBSeqDesign] 
+
+FastqDir:
+  [LibraryB_minP] 
+
+LibraryName:
+  [LibBminP] 
+
+threads_bwa: 8
+# here enter path to directory with fastq files
+InDir: "/path/to/crs-bc-fastq/folder" 
+
+# output directory of the CRS-BC association
+OutDir: "/path/to/project/folder/MPRAscripts/1_CRS_BC_association/output_snake"
+
+#  Which design folders to use
+DesignFolder: "/path/to/project/folder/MPRAscripts/Library_design" 
+
+#Reverse-complement IDs
+RCMAP: "/path/to/project/folder/MPRAscripts/Library_design/meta_files/LibBSeqDesign_RevCompIDs.tsv"
+

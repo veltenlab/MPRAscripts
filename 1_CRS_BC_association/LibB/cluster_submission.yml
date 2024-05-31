@@ -1,4 +1,5 @@
-# SET CLUSTER RESOURCES FOR RUNNING CRS-BC association ===================
+# SET CLUSTER RESOURCES FOR RUNNING CRS-BC association for Lib  ===================
+# We have exact reverse complements of sequences in the library pool and due to this we perform the initial mapping in a strand-specific manner
 
 __resources__:
   gpu:
