@@ -41,7 +41,7 @@ for (i in required_args) {
 }
 
 # Running the script
-source("/path/to/project/folder/Pipelines/MPRA/3_Report_screen/scripts/get_Screen.R")
+source("/path/to/project/folder/MPRAscripts/3_Report_screen/scripts/get_Screen.R")
 library(parallel)
 
 outdir <- gsub("/[^/]+$", "",opt$output)

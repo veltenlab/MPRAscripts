@@ -1,9 +1,9 @@
 ## List of all files used as input
 
 #Directories
-AssDir: "/path/to/project/folder/Pipelines/MPRA/1_CRS_BC_association/output_snake" 
+AssDir: "/path/to/project/folder/MPRAscripts/1_CRS_BC_association/output_snake" 
 InDir: "/path/to/mpra-fastq/folder"
-OutDir: "/path/to/project/folder/Pipelines/MPRA/2_BC_count/output_snake"
+OutDir: "/path/to/project/folder/MPRAscripts/2_BC_count/output_snake"
 
 # Parameters for Libraries
 Design:

@@ -1,6 +1,6 @@
 
 #trp53 cor all and cell states, median calc, output and wrapper
-#
+
 
 '%nin%' = Negate('%in%')
 
@@ -9,7 +9,7 @@ get_CRS_summary <- function(f, run_id, Experiments = NULL,
         #General
           return_experiments=F, #if set to T, only runs the first steps of loading and merging data. The return value can be passed to future function calls via the Experiments parameter
         #Additional files
-          bc_crs_ass = "/path/to/project/folder/Pipelines/MPRA/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz",
+          bc_crs_ass = "/path/to/project/folder/MPRAscripts/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz",
           meta_info = NULL,
           meta_controls_info = NULL,
         #Filter section
@@ -38,11 +38,11 @@ get_CRS_summary <- function(f, run_id, Experiments = NULL,
           homopolymer = 0, #max stretch of homopolymer allowed in barcode. If 0, no filter is applied
           filter_controlGRE = F, #Filter the control barcodes out
         #output section
-          output = "/path/to/project/folder/Pipelines/MPRA/3_Report_screen/output_snake/2_HSC_LibraryA_minPInitial/filtered",         
+          output = "/path/to/project/folder/MPRAscripts/3_Report_screen/output_snake/2_HSC_LibraryA_minPInitial/filtered",         
           plot =T, #create plots on the way in the directory specified as outdir         
           return_report = F, #besides returning the CRS data frame also return a list with some summary stats?
           save_report = F, # Save the summary stats in a CSV file for later comparisons
-          trp53 = "/path/to/design/folder/meta_files/LibASeqDesign_meta_info.csv"
+          trp53 = "/path/to/project/folder/MPRAscripts/Library_design/meta_files/LibASeqDesign_meta_info.csv"
 )
 {
   suppressPackageStartupMessages({

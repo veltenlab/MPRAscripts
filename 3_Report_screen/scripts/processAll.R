@@ -89,7 +89,7 @@ for (i in required_args) {
 }
 
 # Running the script
-source("/path/to/project/folder/Pipelines/MPRA/3_Report_screen/scripts/get_CRS_summary.R")
+source("/path/to/project/folder/MPRAscripts/3_Report_screen/scripts/get_CRS_summary.R")
 library(parallel)
 
 #Select folder

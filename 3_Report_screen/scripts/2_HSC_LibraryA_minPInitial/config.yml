@@ -1,6 +1,6 @@
 ## List of all files used as input
-InDir: "/path/to/project/folder/Pipelines/MPRA/2_BC_count/output_snake"
-OutDir: "/path/to/project/folder/Pipelines/MPRA/3_Report_screen/output_snake/"
+InDir: "/path/to/project/folder/MPRAscripts/2_BC_count/output_snake"
+OutDir: "/path/to/project/folder/MPRAscripts/3_Report_screen/output_snake/"
 
 #New part
 Screen: [2_HSC_LibraryA_minPInitial]
@@ -8,7 +8,7 @@ Screen: [2_HSC_LibraryA_minPInitial]
 
 InitialScreen:
   cores: 7
-  bccrsass: "/path/to/project/folder/Pipelines/MPRA/MPRA/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz"
+  bccrsass: "/path/to/project/folder/MPRAscripts/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz"
   normalizetoinput: FALSE
 
 
@@ -29,9 +29,9 @@ Screenvar:
 Screenparams:
   cores: 7
   returnexperiments: FALSE
-  bccrsass: "/path/to/project/folder/Pipelines/MPRA/MPRA/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz"
-  metainfo: "/path/to/design/folder/meta_files/LibASeqDesign_meta_info.csv"
-  metacontrolsinfo: "/path/to/design/folder/meta_files/LibASeqDesign_controls_meta_info.csv"
+  bccrsass: "/path/to/project/folder/MPRAscripts/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz"
+  metainfo: "/path/to/project/folder/MPRAscripts/Library_design/meta_files/LibASeqDesign_meta_info.csv"
+  metacontrolsinfo: "/path/to/project/folder/MPRAscripts/Library_design/meta_files/LibASeqDesign_controls_meta_info.csv"
   normalizetoinput: FALSE
   rnacrsisumi: FALSE
   barcodeWhitelist: FALSE
@@ -41,7 +41,7 @@ Screenparams:
   returnreport: TRUE
   savereport: TRUE
   filtercolumns: TRUE 
-  Trp53Lib: "/path/to/design/folder/meta_files/LibASeqDesign_meta_info.csv"
+  Trp53Lib: "/path/to/project/folder/MPRAscripts/Library_design/meta_files/LibASeqDesign_meta_info.csv"
 
 
 Screenloop:
