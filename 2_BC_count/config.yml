@@ -1,27 +1,33 @@
 ## List of all files used as input
 
 #Directories
-AssDir: "/users/lvelten/project/SCG4SYN/Pipelines/MPRA/1_CRS_BC_association/output" 
-InDir: "/users/lvelten/project/SCG4SYN/merged_data/output/GRE_count"
-OutDir: "/users/lvelten/project/SCG4SYN/Pipelines/MPRA/2_BC_count/output"
+AssDir: "/path/to/project/folder/Pipelines/MPRA/1_CRS_BC_association/output_snake" 
+InDir: "/path/to/mpra-fastq/folder"
+OutDir: "/path/to/project/folder/Pipelines/MPRA/2_BC_count/output_snake"
 
 # Parameters for Libraries
 Design:
-  [LibASeqDesign, LibHSeqDesign] # , LibBSeqDesign
+  [LibASeqDesign] 
+# All options: LibASeqDesign, LibHSeqDesign, LibBSeqDesign
 
 ScreenID:
-  [2_HSC, 3_HSC, 4_HSC] # 
+  [2_HSC] 
+# HSC: 2_HSC (LibA), 4_HSC (LibB), 7_HSC (LibC) 
+# K562: 8_K562_Transient (LibA), 9_K562_Transient (LibB), 10_K562_Transient (LibB minCMV), 11_K562_Transient (LibC), 12_K562_Integrated (LibB 7d PI)
 
 FastqDir:
-  [LibraryA_minPInitial, LibraryA_minPOptimized, LibraryH_minP] # 
+  [LibraryA_minPInitial] 
+# All options: LibraryA_minPInitial, LibraryA_minPOptimized, LibraryH_minP, LibraryH_minCMV, LibraryB_minP
 
 LibraryName:
-  [LibAminPInitial, LibAminPOpt, LibraryH_minP] # 
+  [LibAminPInitial] 
+# All options: LibAminPInitial, LibAminPOpt, LibraryH_minP, LibBminP
 
 # Parameters for count_BC.pl
 BCcounting:
   MINRUMI: 20 # Generate a  entry for how many BCs have this much UMIs fron 1 to the number
-  MAXRUMI: 10000000 # Set high treshhold in case some sequence is 
+  MAXRUMI: 10000000 # Set high treshhold in case some sequence is highly covered
   downs: 0 # 0 = no downsampling or 1 = downsampling
   downsto: 0.5 # percentage of data to downsample to
+
 

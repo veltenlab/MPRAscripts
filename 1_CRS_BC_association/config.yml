@@ -1,18 +1,24 @@
 ## List of all files used as input
 
 Design:
-  [LibASeqDesign, LibHSeqDesign, LibBSeqDesign] 
+  [LibASeqDesign] 
+# All options: LibASeqDesign, LibHSeqDesign, LibBSeqDesign
 
 FastqDir:
-  [LibraryA_minPInitial, LibraryA_minPOptimized, LibraryH_minP,  LibraryH_minCMV, LibraryB_minP] # 
+  [LibraryA_minPInitial] 
+# All options: LibraryA_minPInitial, LibraryA_minPOptimized, LibraryH_minP, LibraryH_minCMV, LibraryB_minP
 
 LibraryName:
-  [LibAminPInitial, LibAminPOpt, LibHminP, LibHminCMV, LibBminP] #  
+  [LibAminPInitial] 
+# All options: LibAminPInitial, LibAminPOpt, LibraryH_minP, LibBminP
 
 threads_bwa: 8
 
-InDir: "/users/lvelten/project/SCG4SYN/merged_data/output/CRS_Barcode"
+# here enter path to directory with fastq files
+InDir: "/path/to/crs-bc-fastq/folder" 
 
-OutDir: "/users/lvelten/project/SCG4SYN/Pipelines/MPRA/1_CRS_BC_association/output"
+# output directory of the CRS-BC association
+OutDir: "path/to/project/folder/Pipelines/MPRA/1_CRS_BC_association/output_snake" 
 
-DesignFolder: "/users/lvelten/project/SCG4SYN/LibraryDesign/230731_MetaDesignFiles"
+#  Which design folders to use
+DesignFolder: "path/to/design/folder" 

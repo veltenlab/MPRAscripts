@@ -14,26 +14,12 @@ use List::Util qw(min max sum);
 #6. Report statistics - how covered is each UMI (sequencing saturation)
 #7. Output number of UMIs per BC, assignment
 
-#my ($umi, $fwd, $rev, $assignments, $outfile, $statfile, $nonmapped) = @ARGV;
-
-#my @MINREADUMI = (1..10); #report UMIs with at least this many reads
-#my $MAXREADUMI = 10000000; #set to a high value in order to not filter
-#my $downsample = 0; #set to 1 if downsampling of reads should be performed
-#my $dsto = 0.5; #fraction of reads to downsample
-
 my ($umi, $fwd, $rev, $assignments, $outfile, $MINRUMI, $MAXRUMI, $downs, $downsto, $statfile, $nonmapped) = @ARGV;
 
 my @MINREADUMI = (1..$ARGV[5]);
 my $MAXREADUMI = $ARGV[6];
 my $downsample = $ARGV[7];
 my $dsto = $ARGV[8];
-
-#my $MINREADUMI = (1..$MINREADUMI);
-
-#my @MINREADUMI = (1..10); #report UMIs with at least this many reads
-#my $MAXREADUMI = 10000000; #set to a high value in order to not filter
-#my $downsample = 0; #set to 1 if downsampling of reads should be performed
-#my $dsto = 0.5; #fraction of reads to downsample
 
 ###########################################
 ###  Read in  filtered assignments.    ####

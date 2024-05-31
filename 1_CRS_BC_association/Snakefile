@@ -73,6 +73,7 @@ rule index_design:
         "bwa index {input.input} "
         "2> {log}"
 
+# Map the reads
 rule bwa_map:
     input:
         design = DesignFolder+"/design_files/{Design}.fa",
@@ -91,6 +92,7 @@ rule bwa_map:
         "bwa mem -a -t {params.threads} {input.design} {input.FWD} {input.REV} | samtools view -b > {output.bam} " 
         "2> {log}" 
 
+# Map CRS with barcode
 rule CRS_BC_ass:
     input:  
         BC=InDir+"/{FastqDir}/{LibraryName}_merged_R2.fastq.gz",
@@ -121,18 +123,4 @@ rule custom_BC:
     script:
         "scripts/CrsBCReport.Rmd" 
 
-
-# rule custom_BC:
-#     input: 
-#         mapped = OutDir+"/{FastqDir}/{Design}_{LibraryName}_mapped.csv.gz"
-#     output:
-#        OutDir+"/{FastqDir}/{Design}_{LibraryName}_output.rds" 
-#     conda:
-#         "MPRA_processing.yml"  
-#     log:
-#         OutDir+"/log_files/FilterBC/{Design}_{FastqDir}_{LibraryName}_FilterBC.log"
-#     shell:
-#         "Rscript scripts/test.R "  
-#         "-i {input.mapped} "
-#         "-o {output} "
 

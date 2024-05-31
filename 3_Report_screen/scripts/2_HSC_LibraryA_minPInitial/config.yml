@@ -1,0 +1,53 @@
+## List of all files used as input
+InDir: "/path/to/project/folder/Pipelines/MPRA/2_BC_count/output_snake"
+OutDir: "/path/to/project/folder/Pipelines/MPRA/3_Report_screen/output_snake/"
+
+#New part
+Screen: [2_HSC_LibraryA_minPInitial]
+
+
+InitialScreen:
+  cores: 7
+  bccrsass: "/path/to/project/folder/Pipelines/MPRA/MPRA/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz"
+  normalizetoinput: FALSE
+
+
+Screenvar:
+  pseudocount: [TRUE, FALSE] 
+  usecol: ["UMI1","UMI2","UMI3","UMI4","UMI5"] 
+  crsfilter: [10,15,20,25,30,35,40,45,50,60,70,80,90,100] 
+  AssReadsFilter: [1,2,3,4,5] 
+  dnacrsisumi: ["Binarize"] 
+  mindnaumi: [1]
+  minrnaumi: [0]
+  pseudocounttype: ["DNA"] 
+  pseudocountvalue: [1]
+  medupper: [3]
+  medlower: [2]
+
+
+Screenparams:
+  cores: 7
+  returnexperiments: FALSE
+  bccrsass: "/path/to/project/folder/Pipelines/MPRA/MPRA/1_CRS_BC_association/output_snake/LibraryA_minPInitial/LibASeqDesign_LibAminPInitial_mapped_filtered.csv.gz"
+  metainfo: "/path/to/design/folder/meta_files/LibASeqDesign_meta_info.csv"
+  metacontrolsinfo: "/path/to/design/folder/meta_files/LibASeqDesign_controls_meta_info.csv"
+  normalizetoinput: FALSE
+  rnacrsisumi: FALSE
+  barcodeWhitelist: FALSE
+  homopolymer: 0
+  filtercontrolGRE: FALSE
+  plot: TRUE
+  returnreport: TRUE
+  savereport: TRUE
+  filtercolumns: TRUE 
+  Trp53Lib: "/path/to/design/folder/meta_files/LibASeqDesign_meta_info.csv"
+
+
+Screenloop:
+  pseudocount: [TRUE, FALSE] 
+  crsfilter:
+    TRUE: [10,15,20,25,30,35,40,45,50,60,70,80,90,100]
+    FALSE: [10,15,20,25,30,35,40,45,50,60,70,80,90,100]
+
+

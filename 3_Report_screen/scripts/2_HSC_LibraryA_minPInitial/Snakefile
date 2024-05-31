@@ -1,0 +1,178 @@
+### input, output and shell paths are all relative to the project directory ###
+
+configfile: "config.yml"
+
+from itertools import product
+import glob
+import re
+
+#Load directories
+InDir = config["InDir"]
+OutDir = config["OutDir"]
+
+
+#Extract settings for creating parameters
+Screen = config["Screen"]
+pseudocount = config["Screenvar"]["pseudocount"]
+usecol = config["Screenvar"]["usecol"]
+crsfilter = config["Screenvar"]["crsfilter"]
+AssReadsFilter = config["Screenvar"]["AssReadsFilter"]
+
+dnacrsisumi = config["Screenvar"]["dnacrsisumi"]
+mindnaumi = config["Screenvar"]["mindnaumi"]
+minrnaumi = config["Screenvar"]["minrnaumi"]
+pseudocounttype = config["Screenvar"]["pseudocounttype"]
+pseudocountvalue = config["Screenvar"]["pseudocountvalue"]
+medlower = config["Screenvar"]["medlower"]
+medupper = config["Screenvar"]["medupper"]
+
+#for loop adj
+loop_pseudocount = config["Screenloop"]["pseudocount"]
+loop_crs_filter = config["Screenloop"]["crsfilter"]
+
+def filter_combinator(combinator, combs):
+    def filtered_combinator(*args, **kwargs):
+        for wc_comb in combinator(*args, **kwargs):
+            if frozenset(wc_comb) in combs:
+                yield wc_comb
+    return filtered_combinator
+
+# Generate all combinations of Screenvar
+parameter_combinations = []
+
+for s in Screen:#
+    for p in loop_pseudocount:#
+        for uc in usecol:#
+            for ar in AssReadsFilter:#
+                for cf in loop_crs_filter[p]:#
+                    for bd in dnacrsisumi:#
+                        for md in mindnaumi:#
+                            for mr in minrnaumi:#
+                                for pt in pseudocounttype:#
+                                    for pv in pseudocountvalue:#
+                                        for ml in medlower:#
+                                            for mu in medupper:#
+                                                parameter_combinations.append({
+                                                    'Screen': s,
+                                                    'usecol': uc,
+                                                    'dnacrsisumi': bd,
+                                                    'crsfilter': cf,
+                                                    'mindnaumi': md,
+                                                    'minrnaumi': mr,
+                                                    'AssReadsFilter': ar,
+                                                    'pseudocount': p,
+                                                    'pseudocounttype': pt,
+                                                    'pseudocountvalue': pv,
+                                                    'medlower': ml,
+                                                    'medupper': mu
+                                                    })
+
+
+parameter_combinations = { frozenset(x.items()) for x in parameter_combinations }
+combinations = filter_combinator(product, parameter_combinations)   
+
+#Rule All - exapnding for file search
+rule all:
+    input:
+        expand(OutDir+"{Screen}/filtered/experiment_matrix.rds",
+            Screen = config["Screen"]),
+        expand(OutDir+"{Screen}/filtered/{usecol}_DnaIsUmi{dnacrsisumi}_CrsFilter{crsfilter}_MinDnaUmi{mindnaumi}_MinRnaUmi{minrnaumi}_Reads{AssReadsFilter}_Pseudo{pseudocount}_PseudoType{pseudocounttype}_PseudoValue{pseudocountvalue}_Median{medlower}{medupper}/final.crs_report.umi.rda",
+            combinations,
+            Screen = config["Screen"],
+            usecol = config["Screenvar"]["usecol"],
+            dnacrsisumi = config["Screenvar"]["dnacrsisumi"],
+            crsfilter = config["Screenvar"]["crsfilter"],
+            mindnaumi = config["Screenvar"]["mindnaumi"],
+            minrnaumi = config["Screenvar"]["minrnaumi"],
+            AssReadsFilter = config["Screenvar"]["AssReadsFilter"],
+            pseudocount = config["Screenvar"]["pseudocount"],
+            pseudocounttype = config["Screenvar"]["pseudocounttype"],
+            pseudocountvalue = config["Screenvar"]["pseudocountvalue"],
+            medlower = config["Screenvar"]["medlower"],
+            medupper = config["Screenvar"]["medupper"])
+
+# Create initial data.table 
+rule get_screen:
+    input: 
+        input = InDir+"{Screen}/filtered/"
+    output:
+        output = OutDir+"{Screen}/filtered/experiment_matrix.rds"
+    log:
+        OutDir+'log/{Screen}/filtered/process.log'
+    params:
+        cores = config["InitialScreen"]["cores"],
+        bccrsass = config["InitialScreen"]["bccrsass"],
+        normalizetoinput = config["InitialScreen"]["normalizetoinput"]
+    conda:
+        "MPRARreport.yml"
+    shell:
+        "Rscript ../processScreen.R " 
+        "-i {input.input} "
+        "-o {output.output} "
+        "-c {params.cores} "
+        "-b {params.bccrsass} "
+        "-n {params.normalizetoinput} "
+        "2> {log}"  
+
+#Report Screen with speicific sets of parameters
+rule report_screen:
+    input: 
+        experiments = OutDir+'{Screen}/filtered/experiment_matrix.rds',
+        input = InDir+"{Screen}/filtered/"
+    output:
+        order = OutDir+"{Screen}/filtered/{usecol}_DnaIsUmi{dnacrsisumi}_CrsFilter{crsfilter}_MinDnaUmi{mindnaumi}_MinRnaUmi{minrnaumi}_Reads{AssReadsFilter}_Pseudo{pseudocount}_PseudoType{pseudocounttype}_PseudoValue{pseudocountvalue}_Median{medlower}{medupper}/final.crs_report.umi.rda",
+        output =  directory(OutDir+"{Screen}/filtered/{usecol}_DnaIsUmi{dnacrsisumi}_CrsFilter{crsfilter}_MinDnaUmi{mindnaumi}_MinRnaUmi{minrnaumi}_Reads{AssReadsFilter}_Pseudo{pseudocount}_PseudoType{pseudocounttype}_PseudoValue{pseudocountvalue}_Median{medlower}{medupper}/") 
+    log:
+        OutDir+'log/{Screen}/filtered/{usecol}_DnaIsUmi{dnacrsisumi}_CrsFilter{crsfilter}_MinDnaUmi{mindnaumi}_MinRnaUmi{minrnaumi}_Reads{AssReadsFilter}_Pseudo{pseudocount}_PseudoType{pseudocounttype}_PseudoValue{pseudocountvalue}_Median{medlower}{medupper}/process.log'
+    params:
+        cores = config["Screenparams"]["cores"],
+        returnexperiments = config["Screenparams"]["returnexperiments"],
+        bccrsass = config["Screenparams"]["bccrsass"],
+        metainfo = config["Screenparams"]["metainfo"],
+        metacontrolsinfo = config["Screenparams"]["metacontrolsinfo"],
+        normalizetoinput = config["Screenparams"]["normalizetoinput"],
+        rnacrsisumi = config["Screenparams"]["rnacrsisumi"],
+        barcodeWhitelist = config["Screenparams"]["barcodeWhitelist"],
+        homopolymer = config["Screenparams"]["homopolymer"],
+        filtercontrolGRE = config["Screenparams"]["filtercontrolGRE"],
+        plot = config["Screenparams"]["plot"],
+        returnreport = config["Screenparams"]["returnreport"],
+        savereport = config["Screenparams"]["savereport"],
+        filtercolumns = config["Screenparams"]["filtercolumns"],
+        Trp53Lib = config["Screenparams"]["Trp53Lib"]
+    conda:
+        "MPRARreport.yml"
+    shell:
+        "Rscript ../processAll.R "   
+        "-i {input.input} "
+        "--infile {input.experiments} "
+        "-o {output.output} "
+        "-c {params.cores} "
+        "-e {params.returnexperiments} "
+        "-b {params.bccrsass} "
+        "-q {params.metainfo} "
+        "-m {params.metacontrolsinfo} "
+        "-n {params.normalizetoinput} "
+        "-p {wildcards.pseudocount} "
+        "-t {wildcards.pseudocounttype} "
+        "-v {wildcards.pseudocountvalue} "
+        "-u {wildcards.usecol} "
+        "-x {wildcards.mindnaumi} "
+        "-y {wildcards.minrnaumi} "
+        "-d {wildcards.dnacrsisumi} "
+        "-z {params.rnacrsisumi} "
+        "-j {wildcards.medupper} "
+        "-k {wildcards.medlower} "
+        "-g {wildcards.crsfilter} "
+        "-w {params.barcodeWhitelist} "
+        "-a {wildcards.AssReadsFilter} "
+        "-h {params.homopolymer} "
+        "-f {params.filtercontrolGRE} "
+        "-l {params.plot} "
+        "-r {params.returnreport} "
+        "-s {params.savereport} " 
+        "--filtercolumns {params.filtercolumns} " 
+        "--trp53 {params.Trp53Lib} " 
+        "2> {log}"
+
+     

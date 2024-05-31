@@ -27,9 +27,6 @@ LibraryName = config["LibraryName"]
 def filter_combinator(combinator, combs):
     def filtered_combinator(*args, **kwargs):
         for wc_comb in combinator(*args, **kwargs):
-            # Use frozenset instead of tuple
-            # in order to accomodate
-            # unpredictable wildcard order
             if frozenset(wc_comb) in combs:
                 yield wc_comb
     return filtered_combinator
@@ -43,7 +40,6 @@ right_combinations = {
     frozenset({("Design", "LibBSeqDesign"), ("FastqDir", "LibraryB_minP"), ("LibraryName", "LibBminP")})}
 
 filtered_product = filter_combinator(product, right_combinations)   
-
 
 # create a dictionary with every combination of samples for each screen
 # store all samples
@@ -65,25 +61,15 @@ for si in ScreenID:
 comb_list = { frozenset(x.items()) for x in comb_list }
 combinations = filter_combinator(product, comb_list)
 
-#cellstate: ([re.match(pattern, id).group(1) if re.match(pattern, id) else id for id in ids])
-#print(cellstate)
-
-
 #Rule all
 rule all:
     input:
-        expand(AssDir+"/{FastqDir}/{Design}_{LibraryName}_mapped_filtered.csv.gz", # 
+        expand(AssDir+"/{FastqDir}/{Design}_{LibraryName}_mapped_filtered.csv.gz", 
             filtered_product,
             FastqDir = config["FastqDir"],
             Design = config["Design"],
             LibraryName = config["LibraryName"]),
         expand(OutDir+"/{ScreenID}_{FastqDir}/filtered/State_{cellstate}/{NucSample}.map.csv.gz",
-            combinations,
-            ScreenID = config["ScreenID"],
-            FastqDir = config["FastqDir"],
-            cellstate = cellstate,
-            NucSample = ids),
-        expand(OutDir+"/{ScreenID}_{FastqDir}/unfiltered/State_{cellstate}/{NucSample}.map.csv.gz",
             combinations,
             ScreenID = config["ScreenID"],
             FastqDir = config["FastqDir"],
@@ -106,29 +92,6 @@ rule count_BC_filtered:
        "MPRA_processing.yml"  
     log:
         OutDir+"/log_files/count_BC/{ScreenID}_{FastqDir}/filtered/{NucSample}_{cellstate}_countBC.log"
-    params:
-        MINRUMI = config["BCcounting"]["MINRUMI"],
-        MAXRUMI = config["BCcounting"]["MAXRUMI"],
-        downs = config["BCcounting"]["downs"],
-        downsto = config["BCcounting"]["downsto"],   
-    shell:
-        "perl scripts/count_BC.pl {input.umi} {input.fwd} {input.rev} {input.mapped} {output.out} {params.MINRUMI} {params.MAXRUMI} {params.downs} {params.downsto} {output.stat} {output.nonmapped} " 
-        "2> {log}"
-
-rule count_BC_unfiltered:
-    input:
-        umi = InDir+"/{ScreenID}_{FastqDir}/{NucSample}_merged_R2.fastq.gz",
-        fwd = InDir+"/{ScreenID}_{FastqDir}/{NucSample}_merged_R1.fastq.gz",
-        rev = InDir+"/{ScreenID}_{FastqDir}/{NucSample}_merged_R3.fastq.gz",
-        mapped = lambda wildcards: glob.glob(AssDir+"/{FastqDir}/*_mapped.csv.gz".format(FastqDir=wildcards.FastqDir))
-    output:
-        out = OutDir+"/{ScreenID}_{FastqDir}/unfiltered/State_{cellstate}/{NucSample}.map.csv.gz",
-        stat = OutDir+"/{ScreenID}_{FastqDir}/unfiltered/State_{cellstate}/{NucSample}.umistat.txt",
-        nonmapped = OutDir+"/{ScreenID}_{FastqDir}/unfiltered/State_{cellstate}/{NucSample}.nonmapped.csv.gz",
-    conda:
-       "MPRA_processing.yml"  
-    log:
-        OutDir+"/log_files/count_BC/{ScreenID}_{FastqDir}/unfiltered/{NucSample}_{cellstate}_countBC.log"
     params:
         MINRUMI = config["BCcounting"]["MINRUMI"],
         MAXRUMI = config["BCcounting"]["MAXRUMI"],
