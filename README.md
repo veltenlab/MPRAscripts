@@ -182,6 +182,18 @@ Screenloop:
 The [script](3_Report_screen/scripts/processAll.R) will create a folder for each unique combination of parameters.
 The script will also load a sequecing statistic of the MPRA experiment, so for the example of Library A its stored [here](2_BC_count/data). 
 
+## Step 4: 4_Visualize_grid_search
+
+For Library A we have an [example file](4_Visualize_grid_search/4_Visualize_grid_search.Rmd) on how the grid search can be visualized and compared. <br>
+
+__Key parameters to visualize:__
+- `norm_cor_filter`: Contains the technical correlation of the GRE activity
+- `Trp53_norm_cor_filter` : Trp53 correlation (K562 doesnt have Trp53 expression so correlation for these cells is low)
+- `crs_bc_filter.RNA` or `crs_bc_filter.DNA`: Number of RNA/DNA barcodes
+- `RNA_cor` or `DNA_cor`: Correlation of RNA replicates or DNA replicates
+
+
+
 ## Important information of the processing compared to the manuscript
 We performed name changes in the manuscript (left column) compared to the naming in the processing (right column). <br>
 <pre>
