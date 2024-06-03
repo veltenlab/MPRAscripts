@@ -1,6 +1,6 @@
 ## List of all files used as input
 InDir: "/path/to/project/folder/MPRAscripts/2_BC_count/output_snake"
-OutDir: "/path/to/project/folder/MPRAscripts/3_Report_screen/output_snake/"
+OutDir: "/path/to/project/folder/MPRAscripts/3_Report_screen/output_snake"
 
 #New part
 Screen: [2_HSC_LibraryA_minPInitial]
