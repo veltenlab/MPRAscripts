@@ -1,0 +1,84 @@
+---
+title: "Visualize grid search"
+author: "Robert Frömel"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+params:
+  rmd: "4_Visualize_grid_search.Rmd"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_float:
+      collapsed: false
+    highlight: pygments 
+editor_options: 
+  chunk_output_type: console
+---
+
+
+# Load packages
+
+```{r}
+suppressPackageStartupMessages({
+require(plyr)
+require(ggplot2)
+require(reshape2)
+require(readr)
+require(dplyr)
+require(stringr)
+require(tibble)
+require(tidyr)
+library(ggrepel)
+})
+
+'%nin%' = Negate('%in%')
+```
+
+# Load data
+
+```{r}
+# Load in all reports and compare them
+reports_lib_2HSC <- system("find /path/to/project/folder/MPRAscripts/3_Report_screen/output_snake/2_HSC_LibraryA_minPInitial/filtered/ -iname 'CRS_summary_report.rda'", intern = T)
+
+names(reports_lib_2HSC) <- str_match(reports_lib_2HSC, "filtered/(.*?)/State_")[, 2]
+
+processing_reports_2HSC <- lapply(reports_lib_2HSC, function(x) {
+  load(x)
+  return(report_safe)
+})
+
+processing_reports_2HSC <- as.data.frame(t(do.call(cbind, processing_reports_2HSC)))
+processing_reports_2HSC[,2:17] <- apply(processing_reports_2HSC[,2:17], 2, as.numeric)
+processing_reports_2HSC <- processing_reports_2HSC %>% rownames_to_column(var ="ID")
+processing_reports_2HSC$sample <- gsub(pattern = ".*State_(\\d)(.+)__", replacement = "C\\1__", x = processing_reports_2HSC$ID)
+processing_reports_2HSC$Run <- gsub(pattern = ".State.*", replacement = "", x = processing_reports_2HSC$ID)
+processing_reports_2HSC <- processing_reports_2HSC %>% separate(data = ., col = "Run", into = c("use.col", "dna.crs.is.umi","crs_filter","min.dna.umi", "min.rna.umi", "AssReadsFilter", "pseudocount", "pseudocount_type", "pseudocount_value", "Median"), sep = "_", remove = F) 
+processing_reports_2HSC <- processing_reports_2HSC %>% column_to_rownames(var = "ID")
+
+#Filter out parameters we didnt optimize/change for
+processing_reports_2HSC <- processing_reports_2HSC[, colnames(processing_reports_2HSC) %nin% c("min.dna.umi", "min.rna.umi", "pseudocount_type", "pseudocount_value", "Median")]
+
+#Restructuring data frame
+processing_reports_2HSC$Run <- gsub(pattern = "_MinDnaUmi1_MinRnaUmi0",replacement = "", x = processing_reports_2HSC$Run)
+processing_reports_2HSC$Run <- gsub(pattern = "_PseudoTypeDNA_PseudoValue1_Median23",replacement = "", x = processing_reports_2HSC$Run)
+processing_reports_2HSC$dna.crs.is.umi <- gsub(pattern = "DnaIsUmi", replacement = "", x = processing_reports_2HSC$dna.crs.is.umi)
+processing_reports_2HSC$crs_filter <- as.numeric(gsub(pattern = "CrsFilter", replacement = "", x = processing_reports_2HSC$crs_filter))
+processing_reports_2HSC$AssReadsFilter <- as.numeric(gsub(pattern = "Reads", replacement = "", x = processing_reports_2HSC$AssReadsFilter))
+processing_reports_2HSC$pseudocount <- as.logical(gsub(pattern = "Pseudo", replacement = "", x = processing_reports_2HSC$pseudocount))
+processing_reports_2HSC$cellstate <- gsub(pattern = "__.*", replacement = "", x = processing_reports_2HSC$sample)
+processing_reports_2HSC$Replicate <- gsub(pattern = ".*__", replacement = "", x = processing_reports_2HSC$sample)
+```
+
+# Visualize data
+
+```{r}
+ggplot(data = processing_reports_2HSC %>% 
+         filter(Replicate %in% "Replicate1"), aes (x=reorder(sample, -norm_cor_filter), y=norm_cor_filter, group = Run, label=norm_n_filter)) +
+    geom_point(aes(size = norm_n_filter, color = use.col), alpha = 0.5) + 
+  geom_text(hjust=-0.2, vjust=0.5, size = 3) + 
+  facet_grid(pseudocount~crs_filter) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(x= "Cellstate")
+```
+
